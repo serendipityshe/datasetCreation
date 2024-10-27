@@ -5,9 +5,16 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+
     "lxml>=5.3.0",
+
     "numpy>=2.1.2",
+
     "opencv-contrib-python>=4.10.0.84",
+
     "opencv-python>=4.10.0.84",
+
+    "pyproject-toml>=0.0.10",
+
     "scikit-image>=0.24.0",
 ]
