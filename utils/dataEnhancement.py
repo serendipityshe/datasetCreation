@@ -1,456 +1,362 @@
-# -*- coding=utf-8 -*-
-
-import time
 import random
-import copy
 import cv2
+from matplotlib import pyplot as plt
+from tqdm import tqdm
+import albumentations as A
+import shutil
 import os
-import math
+import time
+import matplotlib.pyplot as plt
 import numpy as np
-from skimage.util import random_noise
-from lxml import etree, objectify
-import xml.etree.ElementTree as ET
-import argparse
+import math
+from PIL import Image
 
 
-# 显示图片
-def show_pic(img, bboxes=None):
-    '''
-    输入:
-        img:图像array
-        bboxes:图像的所有boudning box list, 格式为[[x_min, y_min, x_max, y_max]....]
-        names:每个box对应的名称
-    '''
-    for i in range(len(bboxes)):
-        bbox = bboxes[i]
-        x_min = bbox[0]
-        y_min = bbox[1]
-        x_max = bbox[2]
-        y_max = bbox[3]
-        cv2.rectangle(img, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (0, 255, 0), 3)
-    cv2.namedWindow('pic', 0)  # 1表示原图
-    cv2.moveWindow('pic', 0, 0)
-    cv2.resizeWindow('pic', 1200, 800)  # 可视化的图片大小
-    cv2.imshow('pic', img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+class aug:
+    def __init__(self, ImP, LaP, OutImP, OutLaP):
+        self.__ImagePath = ImP
+        self.__LablePath = LaP
+        self.__OutImP = OutImP
+        self.__OutLaP = OutLaP
+        pass
+
+    def __GetFile(self, folder_path):
+        file_names = []
+        for file_name in os.listdir(folder_path):
+            if os.path.isfile(os.path.join(folder_path, file_name)):
+                file_names.append(file_name)
+        return file_names
+
+    def __GetBbox(self, txt_file_path):
+        with open(txt_file_path, 'r') as f:
+            lines = f.readlines()
+        bbox = []
+        for line in lines:
+            parts = line.strip().split(',')
+            category = parts[0].split()
+            x1, y1, x2, y2, x3, y3, x4, y4, classes, diff = category[:]
+            x1 = float(x1)
+            x2 = float(x2)
+            x3 = float(x3)
+            x4 = float(x4)
+            y1 = float(y1)
+            y2 = float(y2)
+            y3 = float(y3)
+            y4 = float(y4)
+            bbox.append([x1, y1, x2, y2, x3, y3, x4, y4, classes, diff])
+        return bbox
+
+    def __GetBbox2MirrorHorizon(self, txt_file_path, w):
+        with open(txt_file_path, 'r') as f:
+            lines = f.readlines()
+        bbox = []
+        for line in lines:
+            parts = line.strip().split(',')
+            category = parts[0].split()
+            x1, y1, x2, y2, x3, y3, x4, y4, classes, diff = category[:]
+            x1 = float(x1)
+            x2 = float(x2)
+            x3 = float(x3)
+            x4 = float(x4)
+            y1 = float(y1)
+            y2 = float(y2)
+            y3 = float(y3)
+            y4 = float(y4)
+            space_separated_string = ' '.join(map(str, [w - x1, y1, w - x2, y2, w - x3, y3, w - x4, y4, classes, diff]))
+            bbox.append(space_separated_string)
+        return bbox
+
+    def __GetBbox2Vertical(self, txt_file_path, h):
+        with open(txt_file_path, 'r') as f:
+            lines = f.readlines()
+        bbox = []
+        for line in lines:
+            parts = line.strip().split(',')
+            category = parts[0].split()
+            x1, y1, x2, y2, x3, y3, x4, y4, classes, diff = category[:]
+            x1 = float(x1)
+            x2 = float(x2)
+            x3 = float(x3)
+            x4 = float(x4)
+            y1 = float(y1)
+            y2 = float(y2)
+            y3 = float(y3)
+            y4 = float(y4)
+            space_separated_string = ' '.join(map(str, [x1, h - y1, x2, h - y2, x3, h - y3, x4, h - y4, classes, diff]))
+            bbox.append(space_separated_string)
+        return bbox
+
+    def __GetBbox2HV(self, txt_file_path, w, h):
+        with open(txt_file_path, 'r') as f:
+            lines = f.readlines()
+        bbox = []
+        for line in lines:
+            parts = line.strip().split(',')
+            category = parts[0].split()
+            x1, y1, x2, y2, x3, y3, x4, y4, classes, diff = category[:]
+            x1 = float(x1)
+            x2 = float(x2)
+            x3 = float(x3)
+            x4 = float(x4)
+            y1 = float(y1)
+            y2 = float(y2)
+            y3 = float(y3)
+            y4 = float(y4)
+            space_separated_string = ' '.join(
+                map(str, [w - x1, h - y1, w - x2, h - y2, w - x3, h - y3, w - x4, h - y4, classes, diff]))
+            bbox.append(space_separated_string)
+        return bbox
+
+    def __GetBboxRotate(self, txt_file_path, angle, w, h, d):
+        with open(txt_file_path, 'r') as f:
+            lines = f.readlines()
+        bbox = []
+        for line in lines:
+            parts = line.strip().split(',')
+            category = parts[0].split()
+            x1, y1, x2, y2, x3, y3, x4, y4, classes, diff = category[:]
+            cx = w / 2
+            cy = h / 2
+            cos = np.cos(np.deg2rad(360 - angle))
+            sin = np.sin(np.deg2rad(360 - angle))
+            x1 = float(x1) - cx
+            x2 = float(x2) - cx
+            x3 = float(x3) - cx
+            x4 = float(x4) - cx
+            y1 = float(y1) - cy
+            y2 = float(y2) - cy
+            y3 = float(y3) - cy
+            y4 = float(y4) - cy
+            new_x1 = round(x1 * cos - y1 * sin)
+            new_y1 = round(x1 * sin + y1 * cos)
+            new_x2 = round(x2 * cos - y2 * sin)
+            new_y2 = round(x2 * sin + y2 * cos)
+            new_x3 = round(x3 * cos - y3 * sin)
+            new_y3 = round(x3 * sin + y3 * cos)
+            new_x4 = round(x4 * cos - y4 * sin)
+            new_y4 = round(x4 * sin + y4 * cos)
+            new_x1 = new_x1 + cx * d
+            new_y1 = new_y1 + cy * d
+            new_x2 = new_x2 + cx * d
+            new_y2 = new_y2 + cy * d
+            new_x3 = new_x3 + cx * d
+            new_y3 = new_y3 + cy * d
+            new_x4 = new_x4 + cx * d
+            new_y4 = new_y4 + cy * d
+            space_separated_string = ' '.join(
+                map(str, [new_x1, new_y1, new_x2, new_y2, new_x3, new_y3, new_x4, new_y4, classes, diff]))
+            bbox.append(space_separated_string)
+        return bbox
+
+    def __GetBboxResize(self, txt_file_path, scale, left, top):
+        with open(txt_file_path, 'r') as f:
+            lines = f.readlines()
+        bbox = []
+        for line in lines:
+            parts = line.strip().split(',')
+            category = parts[0].split()
+            x1, y1, x2, y2, x3, y3, x4, y4, classes, diff = category[:]
+            x1 = float(x1) * scale + left
+            x2 = float(x2) * scale + left
+            x3 = float(x3) * scale + left
+            x4 = float(x4) * scale + left
+            y1 = float(y1) * scale + top
+            y2 = float(y2) * scale + top
+            y3 = float(y3) * scale + top
+            y4 = float(y4) * scale + top
+            space_separated_string = ' '.join(map(str, [x1, y1, x2, y2, x3, y3, x4, y4, classes, diff]))
+            bbox.append(space_separated_string)
+        return bbox
 
 
-# 图像均为cv2读取
-class DataAugmentForObjectDetection():
-    def __init__(self, rotation_rate=0.5, max_rotation_angle=5,
-                 crop_rate=0.5, shift_rate=0.5, change_light_rate=0.5,
-                 add_noise_rate=0.5, flip_rate=0.5,
-                 cutout_rate=0.5, cut_out_length=50, cut_out_holes=1, cut_out_threshold=0.5,
-                 is_addNoise=True, is_changeLight=True, is_cutout=True, is_rotate_img_bbox=True,
-                 is_crop_img_bboxes=True, is_shift_pic_bboxes=True, is_filp_pic_bboxes=True):
+    def __lable2txt(self, lableInfo, txtPath):
+        with open(txtPath, 'w') as f:
+            f.writelines([line + os.linesep for line in lableInfo])
 
-        # 配置各个操作的属性
-        self.rotation_rate = rotation_rate
-        self.max_rotation_angle = max_rotation_angle
-        self.crop_rate = crop_rate
-        self.shift_rate = shift_rate
-        self.change_light_rate = change_light_rate
-        self.add_noise_rate = add_noise_rate
-        self.flip_rate = flip_rate
-        self.cutout_rate = cutout_rate
-
-        self.cut_out_length = cut_out_length
-        self.cut_out_holes = cut_out_holes
-        self.cut_out_threshold = cut_out_threshold
-
-        # 是否使用某种增强方式
-        self.is_addNoise = is_addNoise
-        self.is_changeLight = is_changeLight
-        self.is_cutout = is_cutout
-        self.is_rotate_img_bbox = is_rotate_img_bbox
-        self.is_crop_img_bboxes = is_crop_img_bboxes
-        self.is_shift_pic_bboxes = is_shift_pic_bboxes
-        self.is_filp_pic_bboxes = is_filp_pic_bboxes
-
-    # ----1.加噪声---- #
-    def _addNoise(self, img):
+    def AddWeather(self,ratio=1.0):
         '''
-        输入:
-            img:图像array
-        输出:
-            加噪声后的图像array,由于输出的像素是在[0,1]之间,所以得乘以255
+        AddWeather:对文件夹中的图片进行天气增强 1:1:1:1=雨天:雪天:日光:阴影
         '''
-        # return cv2.GaussianBlur(img, (11, 11), 0)
-        return random_noise(img, mode='gaussian', clip=True) * 255
+        flag = '000'
+        Filelist = self.__GetFile(self.__ImagePath)
+        for filename in tqdm(Filelist):
+            random_float = random.uniform(0, 1)
+            if ratio < random_float:
+                continue
+            name_only = os.path.splitext(os.path.basename(filename))[0]
+            image = cv2.imread(self.__ImagePath + '/' + filename)
+            height, width, _ = image.shape
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            random_number = random.randint(0, 3)
+            # random_number=0
+            if random_number == 0:
+                transform = A.Compose(
+                    [A.RandomRain(brightness_coefficient=0.9, drop_width=1, blur_value=5, p=1)],
+                )
+            elif random_number == 1:
+                transform = A.Compose(
+                    [A.RandomSnow(brightness_coeff=1.2, snow_point_lower=0.3, snow_point_upper=0.5, p=1)],
+                )
+            elif random_number == 2:
+                brightness_limit = random.uniform(-0.2, 0.2)  # 亮度调整范围，可以根据需要调整
+                contrast_limit = random.uniform(0.9, 1.1)  # 对比度调整范围，可以根据需要调整
+                transform = A.Compose(
+                    [A.RandomBrightnessContrast(brightness_limit=brightness_limit, contrast_limit=contrast_limit, p=1)],
+                )
+            elif random_number == 3:
+                var_limit = (10, 50)  # 高斯噪声的方差范围，可以根据需要调整
+                transform = A.Compose(
+                    [A.GaussNoise(var_limit=var_limit, p=1)],
+                )
+            #            elif random_number==2:
+            #                transform = A.Compose(
+            #                    [A.RandomSunFlare(flare_roi=(0, 0, 1, 1), angle_lower=0.2, p=1)],
+            #                )
+            #            else:
+            #                transform = A.Compose(
+            #                    [A.RandomShadow(num_shadows_lower=1, num_shadows_upper=3, shadow_dimension=5, shadow_roi=(0, 0.5, 1, 1), p=1)],
+            #                )
+            random.seed(time.time())
+            transformed = transform(image=image)
+            # Convert the transformed image back to a PIL image
+            transformed_pil = Image.fromarray(transformed['image'])
 
-    # ---2.调整亮度--- #
-    def _changeLight(self, img):
-        alpha = random.uniform(0.35, 1)
-        blank = np.zeros(img.shape, img.dtype)
-        return cv2.addWeighted(img, alpha, blank, 1 - alpha, 0)
+            # Save the transformed image as a TIF image
+            transformed_pil.save(self.__OutImP + '/' + name_only + flag + '.tif')
 
-    # ---3.cutout--- #
-    def _cutout(self, img, bboxes, length=100, n_holes=1, threshold=0.5):
+            shutil.copy(self.__LablePath + '/' + name_only + '.txt', self.__OutLaP + '/' + name_only + flag + '.txt')
+
+    def MirrorHorizon(self, ratio=1.0):
         '''
-        原版本：https://github.com/uoguelph-mlrg/Cutout/blob/master/util/cutout.py
-        Randomly mask out one or more patches from an image.
-        Args:
-            img : a 3D numpy array,(h,w,c)
-            bboxes : 框的坐标
-            n_holes (int): Number of patches to cut out of each image.
-            length (int): The length (in pixels) of each square patch.
+        MirrorHorizon: 水平镜像图像
+        ratio: float < 1.0
         '''
+        flag = '001'
+        Filelist = self.__GetFile(self.__ImagePath)
+        # if random_float<ratio:
+        for filename in tqdm(Filelist):
+            random_float = random.uniform(0, 1)
+            if ratio < random_float:
+                continue
+            name_only = os.path.splitext(os.path.basename(filename))[0]
+            image = cv2.imread(self.__ImagePath + '/' + filename)
+            height, width, _ = image.shape
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # 水平镜像
+            flipped = cv2.flip(image, 1)
+            # Convert the flipped image back to BGR format
+            flipped_bgr = cv2.cvtColor(flipped, cv2.COLOR_RGB2BGR)
+            # 保存镜像后的图像文件
+            cv2.imwrite(self.__OutImP + '/' + name_only + flag + '.tif', flipped_bgr)
+            lableInfo = self.__GetBbox2MirrorHorizon(self.__LablePath + '/' + name_only + '.txt', width)
+            self.__lable2txt(lableInfo, self.__OutLaP + '/' + name_only + flag + '.txt')
 
-        def cal_iou(boxA, boxB):
-            '''
-            boxA, boxB为两个框，返回iou
-            boxB为bouding box
-            '''
-            # determine the (x, y)-coordinates of the intersection rectangle
-            xA = max(boxA[0], boxB[0])
-            yA = max(boxA[1], boxB[1])
-            xB = min(boxA[2], boxB[2])
-            yB = min(boxA[3], boxB[3])
-
-            if xB <= xA or yB <= yA:
-                return 0.0
-
-            # compute the area of intersection rectangle
-            interArea = (xB - xA + 1) * (yB - yA + 1)
-
-            # compute the area of both the prediction and ground-truth
-            # rectangles
-            boxAArea = (boxA[2] - boxA[0] + 1) * (boxA[3] - boxA[1] + 1)
-            boxBArea = (boxB[2] - boxB[0] + 1) * (boxB[3] - boxB[1] + 1)
-            iou = interArea / float(boxBArea)
-            return iou
-
-        # 得到h和w
-        if img.ndim == 3:
-            h, w, c = img.shape
-        else:
-            _, h, w, c = img.shape
-        mask = np.ones((h, w, c), np.float32)
-        for n in range(n_holes):
-            chongdie = True  # 看切割的区域是否与box重叠太多
-            while chongdie:
-                y = np.random.randint(h)
-                x = np.random.randint(w)
-
-                y1 = np.clip(y - length // 2, 0,
-                             h)  # numpy.clip(a, a_min, a_max, out=None), clip这个函数将将数组中的元素限制在a_min, a_max之间，大于a_max的就使得它等于 a_max，小于a_min,的就使得它等于a_min
-                y2 = np.clip(y + length // 2, 0, h)
-                x1 = np.clip(x - length // 2, 0, w)
-                x2 = np.clip(x + length // 2, 0, w)
-
-                chongdie = False
-                for box in bboxes:
-                    if cal_iou([x1, y1, x2, y2], box) > threshold:
-                        chongdie = True
-                        break
-            mask[y1: y2, x1: x2, :] = 0.
-        img = img * mask
-        return img
-
-    # ---4.旋转--- #
-    def _rotate_img_bbox(self, img, bboxes, angle=5, scale=1.):
-        w, h = img.shape[1], img.shape[0]
-        rangle = np.deg2rad(angle)  # angle in radians
-        nw = (abs(np.sin(rangle) * h) + abs(np.cos(rangle) * w)) * scale
-        nh = (abs(np.cos(rangle) * h) + abs(np.sin(rangle) * w)) * scale
-        rot_mat = cv2.getRotationMatrix2D((nw * 0.5, nh * 0.5), angle, scale)
-        rot_move = np.dot(rot_mat, np.array([(nw - w) * 0.5, (nh - h) * 0.5, 0]))
-        rot_mat[0, 2] += rot_move[0]
-        rot_mat[1, 2] += rot_move[1]
-        rot_img = cv2.warpAffine(img, rot_mat, (int(math.ceil(nw)), int(math.ceil(nh))), flags=cv2.INTER_LANCZOS4)
-
-        rot_bboxes = []
-        for bbox in bboxes:
-            points = np.array([[bbox[0], bbox[1]], [bbox[2], bbox[1]], [bbox[2], bbox[3]], [bbox[0], bbox[3]]])
-            new_points = cv2.transform(points[None, :, :], rot_mat)[0]
-            rx, ry, rw, rh = cv2.boundingRect(new_points)
-            corrected_bbox = [max(0, rx), max(0, ry), min(nw, rx + rw), min(nh, ry + rh)]
-            corrected_bbox = [int(val) for val in corrected_bbox]  # Convert to int and correct order if necessary
-            rot_bboxes.append(corrected_bbox)
-        return rot_img, rot_bboxes
-
-    # ---5.裁剪--- #
-    def _crop_img_bboxes(self, img, bboxes):
+    def MirrorVertical(self, ratio=1.0):
         '''
-        裁剪后的图片要包含所有的框
-        输入:
-            img:图像array
-            bboxes:该图像包含的所有boundingboxs,一个list,每个元素为[x_min, y_min, x_max, y_max],要确保是数值
-        输出:
-            crop_img:裁剪后的图像array
-            crop_bboxes:裁剪后的bounding box的坐标list
+        MirrorVertical: 竖直镜像图像
+        ratio: float < 1.0
         '''
-        # 裁剪图像
-        w = img.shape[1]
-        h = img.shape[0]
-        x_min = w  # 裁剪后的包含所有目标框的最小的框
-        x_max = 0
-        y_min = h
-        y_max = 0
-        for bbox in bboxes:
-            x_min = min(x_min, bbox[0])
-            y_min = min(y_min, bbox[1])
-            x_max = max(x_max, bbox[2])
-            y_max = max(y_max, bbox[3])
+        flag = '010'
+        Filelist = self.__GetFile(self.__ImagePath)
+        # if random_float<ratio:
+        for filename in tqdm(Filelist):
+            random_float = random.uniform(0, 1)
+            if ratio < random_float:
+                continue
+            name_only = os.path.splitext(os.path.basename(filename))[0]
+            image = cv2.imread(self.__ImagePath + '/' + filename)
+            height, width, _ = image.shape
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # 竖直镜像
+            flipped = cv2.flip(image, 0)
+            flipped_bgr = cv2.cvtColor(flipped, cv2.COLOR_RGB2BGR)
+            # 保存镜像后的图像文件
+            cv2.imwrite(self.__OutImP + '/' + name_only + flag + '.tif', flipped_bgr)
+            lableInfo = self.__GetBbox2Vertical(self.__LablePath + '/' + name_only + '.txt', height)
+            self.__lable2txt(lableInfo, self.__OutLaP + '/' + name_only + flag + '.txt')
 
-        d_to_left = x_min  # 包含所有目标框的最小框到左边的距离
-        d_to_right = w - x_max  # 包含所有目标框的最小框到右边的距离
-        d_to_top = y_min  # 包含所有目标框的最小框到顶端的距离
-        d_to_bottom = h - y_max  # 包含所有目标框的最小框到底部的距离
-
-        # 随机扩展这个最小框
-        crop_x_min = int(x_min - random.uniform(0, d_to_left))
-        crop_y_min = int(y_min - random.uniform(0, d_to_top))
-        crop_x_max = int(x_max + random.uniform(0, d_to_right))
-        crop_y_max = int(y_max + random.uniform(0, d_to_bottom))
-
-        # 随机扩展这个最小框 , 防止别裁的太小
-        # crop_x_min = int(x_min - random.uniform(d_to_left//2, d_to_left))
-        # crop_y_min = int(y_min - random.uniform(d_to_top//2, d_to_top))
-        # crop_x_max = int(x_max + random.uniform(d_to_right//2, d_to_right))
-        # crop_y_max = int(y_max + random.uniform(d_to_bottom//2, d_to_bottom))
-
-        # 确保不要越界
-        crop_x_min = max(0, crop_x_min)
-        crop_y_min = max(0, crop_y_min)
-        crop_x_max = min(w, crop_x_max)
-        crop_y_max = min(h, crop_y_max)
-
-        crop_img = img[crop_y_min:crop_y_max, crop_x_min:crop_x_max]
-
-        # 裁剪boundingbox
-        # 裁剪后的boundingbox坐标计算
-        crop_bboxes = list()
-        for bbox in bboxes:
-            crop_bboxes.append([bbox[0] - crop_x_min, bbox[1] - crop_y_min, bbox[2] - crop_x_min, bbox[3] - crop_y_min])
-
-        return crop_img, crop_bboxes
-
-    # ---6.平移--- #
-    def _shift_pic_bboxes(self, img, bboxes):
-        h, w = img.shape[:2]
-        x = random.uniform(-w * 0.2, w * 0.2)
-        y = random.uniform(-h * 0.2, h * 0.2)
-        M = np.float32([[1, 0, x], [0, 1, y]])
-        shift_img = cv2.warpAffine(img, M, (w, h))
-
-        shift_bboxes = []
-        for bbox in bboxes:
-            new_bbox = [bbox[0] + x, bbox[1] + y, bbox[2] + x, bbox[3] + y]
-            corrected_bbox = [max(0, new_bbox[0]), max(0, new_bbox[1]), min(w, new_bbox[2]), min(h, new_bbox[3])]
-            corrected_bbox = [int(val) for val in corrected_bbox]  # Convert to int and correct order if necessary
-            shift_bboxes.append(corrected_bbox)
-        return shift_img, shift_bboxes
-
-    # ---7.镜像--- #
-    def _filp_pic_bboxes(self, img, bboxes):
-        # Randomly decide the flip method
-        flipCode = random.choice([-1, 0, 1])  # -1: both; 0: vertical; 1: horizontal
-        flip_img = cv2.flip(img, flipCode)  # Apply the flip
-        h, w, _ = img.shape
-        flip_bboxes = []
-
-        for bbox in bboxes:
-            x_min, y_min, x_max, y_max = bbox
-            if flipCode == 0:  # Vertical flip
-                new_bbox = [x_min, h - y_max, x_max, h - y_min]
-            elif flipCode == 1:  # Horizontal flip
-                new_bbox = [w - x_max, y_min, w - x_min, y_max]
-            else:  # Both flips
-                new_bbox = [w - x_max, h - y_max, w - x_min, h - y_min]
-            flip_bboxes.append(new_bbox)
-
-        return flip_img, flip_bboxes
-
-    # 图像增强方法
-    def dataAugment(self, img, bboxes):
+    def MirrorHorizonAndVertical(self, ratio=1.0):
         '''
-        图像增强
-        输入:
-            img:图像array
-            bboxes:该图像的所有框坐标
-        输出:
-            img:增强后的图像
-            bboxes:增强后图片对应的box
+        MirrorHorizonAndVertical: 水平竖直镜像图像
+        ratio: float < 1.0
         '''
-        change_num = 0  # 改变的次数
-        # print('------')
-        while change_num < 1:  # 默认至少有一种数据增强生效
+        flag = '011'
+        Filelist = self.__GetFile(self.__ImagePath)
+        # if random_float<ratio:
+        for filename in tqdm(Filelist):
+            random_float = random.uniform(0, 1)
+            if ratio < random_float:
+                continue
+            name_only = os.path.splitext(os.path.basename(filename))[0]
+            image = cv2.imread(self.__ImagePath + '/' + filename)
+            height, width, _ = image.shape
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # 竖直镜像
+            flipped = cv2.flip(image, -1)
+            flipped_bgr = cv2.cvtColor(flipped, cv2.COLOR_RGB2BGR)
+            # 保存镜像后的图像文件
+            cv2.imwrite(self.__OutImP + '/' + name_only + flag + '.tif', flipped_bgr)
+            lableInfo = self.__GetBbox2HV(self.__LablePath + '/' + name_only + '.txt', width, height)
+            self.__lable2txt(lableInfo, self.__OutLaP + '/' + name_only + flag + '.txt')
 
-            if self.is_rotate_img_bbox:
-                if random.random() > self.rotation_rate:  # 旋转
-                    change_num += 1
-                    angle = random.uniform(-self.max_rotation_angle, self.max_rotation_angle)
-                    scale = random.uniform(0.7, 0.8)
-                    img, bboxes = self._rotate_img_bbox(img, bboxes, angle, scale)
+    def Rotate(self, angle=45, ratio=1.0):
+        flag = '100'
+        Filelist = self.__GetFile(self.__ImagePath)
+        # if random_float<ratio:
+        for filename in tqdm(Filelist):
+            random_float = random.uniform(0, 1)
+            if ratio < random_float:
+                continue
+            name_only = os.path.splitext(os.path.basename(filename))[0]
+            image = cv2.imread(self.__ImagePath + '/' + filename)
+            height, width, _ = image.shape
+            center = (width / 2, height / 2)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # 计算旋转矩阵
+            matrix = cv2.getRotationMatrix2D(center, angle, 1)
+            # 计算旋转后的图像大小
+            cos = np.abs(matrix[0, 0])
+            sin = np.abs(matrix[0, 1])
+            new_width = int(height * sin + width * cos)
+            new_height = int(height * cos + width * sin)
+            # 调整旋转矩阵以考虑新的大小
+            matrix[0, 2] += (new_width - width) / 2
+            matrix[1, 2] += (new_height - height) / 2
+            # 旋转图像并填充黑色
+            rotated = cv2.warpAffine(image, matrix, (new_width, new_height), borderValue=(0, 0, 0))
+            # Convert the rotated image back to BGR format
+            rotated_bgr = cv2.cvtColor(rotated, cv2.COLOR_RGB2BGR)
+            # Save the rotated image as a BGR image
+            cv2.imwrite(self.__OutImP + '/' + name_only + flag + '.tif', rotated_bgr)
+            lableInfo = self.__GetBboxRotate(self.__LablePath + '/' + name_only + '.txt', angle, width, height,
+                                             new_height / height)
+            self.__lable2txt(lableInfo, self.__OutLaP + '/' + name_only + flag + '.txt')
 
-            if self.is_shift_pic_bboxes:
-                if random.random() < self.shift_rate:  # 平移
-                    change_num += 1
-                    img, bboxes = self._shift_pic_bboxes(img, bboxes)
+    def RandomResize(self, min_scale=0.3, max_scale=0.7, ratio=1):
+        flag = '200'
+        Filelist = self.__GetFile(self.__ImagePath)
+        for filename in tqdm(Filelist):
+            random_float = random.uniform(0, 1)
+            if ratio < random_float:
+                continue
+            name_only = os.path.splitext(os.path.basename(filename))[0]
+            image = cv2.imread(os.path.join(self.__ImagePath, filename))
+            height, width, _ = image.shape
+            scale = random.uniform(min_scale, max_scale)
+            new_width = int(width * scale)
+            new_height = int(height * scale)
+            resized = cv2.resize(image, (new_width, new_height))
 
-            if self.is_changeLight:
-                if random.random() > self.change_light_rate:  # 改变亮度
-                    change_num += 1
-                    img = self._changeLight(img)
+            # 添加填充以保持原始分辨率
+            top = (height - new_height) // 2
+            bottom = height - new_height - top
+            left = (width - new_width) // 2
+            right = width - new_width - left
+            padded_image = cv2.copyMakeBorder(resized, top, bottom, left, right, cv2.BORDER_CONSTANT, value=0)
 
-            if self.is_addNoise:
-                if random.random() < self.add_noise_rate:  # 加噪声
-                    change_num += 1
-                    img = self._addNoise(img)
-            if self.is_cutout:
-                if random.random() < self.cutout_rate:  # cutout
-                    change_num += 1
-                    img = self._cutout(img, bboxes, length=self.cut_out_length, n_holes=self.cut_out_holes,
-                                       threshold=self.cut_out_threshold)
-            if self.is_filp_pic_bboxes:
-                if random.random() < self.flip_rate:  # 翻转
-                    change_num += 1
-                    img, bboxes = self._filp_pic_bboxes(img, bboxes)
-
-        return img, bboxes
-
-
-# xml解析工具
-class ToolHelper():
-    # 从xml文件中提取bounding box信息, 格式为[[x_min, y_min, x_max, y_max, name]]
-    def parse_xml(self, path):
-        '''
-        输入：
-            xml_path: xml的文件路径
-        输出：
-            从xml文件中提取bounding box信息, 格式为[[x_min, y_min, x_max, y_max, name]]
-        '''
-        tree = ET.parse(path)
-        root = tree.getroot()
-        objs = root.findall('object')
-        coords = list()
-        for ix, obj in enumerate(objs):
-            name = obj.find('name').text
-            box = obj.find('bndbox')
-            if box is None:
-                continue  # 跳过没有bndbox的对象
-            x_min = int(box[0].text)
-            y_min = int(box[1].text)
-            x_max = int(box[2].text)
-            y_max = int(box[3].text)
-            coords.append([x_min, y_min, x_max, y_max, name])
-        return coords
-
-    # 保存图片结果
-    def save_img(self, file_name, save_folder, img):
-        cv2.imwrite(os.path.join(save_folder, file_name), img)
-
-    # 保持xml结果
-    def save_xml(self, file_name, save_folder, img_info, height, width, channel, bboxs_info):
-        '''
-        :param file_name:文件名
-        :param save_folder:#保存的xml文件的结果
-        :param height:图片的信息
-        :param width:图片的宽度
-        :param channel:通道
-        :return:
-        '''
-        folder_name, img_name = img_info  # 得到图片的信息
-
-        E = objectify.ElementMaker(annotate=False)
-
-        anno_tree = E.annotation(
-            E.folder(folder_name),
-            E.filename(img_name),
-            E.path(os.path.join(folder_name, img_name)),
-            E.source(
-                E.database('Unknown'),
-            ),
-            E.size(
-                E.width(width),
-                E.height(height),
-                E.depth(channel)
-            ),
-            E.segmented(0),
-        )
-
-        labels, bboxs = bboxs_info  # 得到边框和标签信息
-        for label, box in zip(labels, bboxs):
-            anno_tree.append(
-                E.object(
-                    E.name(label),
-                    E.pose('Unspecified'),
-                    E.truncated('0'),
-                    E.difficult('0'),
-                    E.bndbox(
-                        E.xmin(box[0]),
-                        E.ymin(box[1]),
-                        E.xmax(box[2]),
-                        E.ymax(box[3])
-                    )
-                ))
-
-        etree.ElementTree(anno_tree).write(os.path.join(save_folder, file_name), pretty_print=True)
+            cv2.imwrite(self.__OutImP + '/' + name_only + flag + '.tif', padded_image)
+            lableInfo = self.__GetBboxResize(self.__LablePath + '/' + name_only + '.txt', scale, left, top)
+            self.__lable2txt(lableInfo, self.__OutLaP + '/' + name_only + flag + '.txt')
 
 
-if __name__ == '__main__':
-
-    need_aug_num = 5  # 每张图片需要增强的次数
-
-    is_endwidth_dot = True  # 文件是否以.jpg或者png结尾
-
-    dataAug = DataAugmentForObjectDetection()  # 数据增强工具类
-
-    toolhelper = ToolHelper()  # 工具
-
-    # 获取相关参数
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--source_img_path', type=str, default='./data/train/img')
-    parser.add_argument('--source_xml_path', type=str, default='./data/train/xml')
-    parser.add_argument('--save_img_path', type=str, default='./data/train/img2')
-    parser.add_argument('--save_xml_path', type=str, default='./data/train/xml2')
-    args = parser.parse_args()
-    source_img_path = args.source_img_path  # 图片原始位置
-    source_xml_path = args.source_xml_path  # xml的原始位置
-
-    save_img_path = args.save_img_path  # 图片增强结果保存文件
-    save_xml_path = args.save_xml_path  # xml增强结果保存文件
-
-    # 如果保存文件夹不存在就创建
-    if not os.path.exists(save_img_path):
-        os.mkdir(save_img_path)
-
-    if not os.path.exists(save_xml_path):
-        os.mkdir(save_xml_path)
-
-    for parent, _, files in os.walk(source_img_path):
-        files.sort()
-        for file in files:
-            cnt = 0
-            pic_path = os.path.join(parent, file)
-            xml_path = os.path.join(source_xml_path, file[:-4] + '.xml')
-            values = toolhelper.parse_xml(xml_path)  # 解析得到box信息，格式为[[x_min,y_min,x_max,y_max,name]]
-            coords = [v[:4] for v in values]  # 得到框
-            labels = [v[-1] for v in values]  # 对象的标签
-
-            # 如果图片是有后缀的
-            if is_endwidth_dot:
-                # 找到文件的最后名字
-                dot_index = file.rfind('.')
-                _file_prefix = file[:dot_index]  # 文件名的前缀
-                _file_suffix = file[dot_index:]  # 文件名的后缀
-            img = cv2.imread(pic_path)
-
-            # show_pic(img, coords)  # 显示原图
-            while cnt < need_aug_num:  # 继续增强
-                auged_img, auged_bboxes = dataAug.dataAugment(img, coords)
-                auged_bboxes_int = np.array(auged_bboxes).astype(np.int32)
-                height, width, channel = auged_img.shape  # 得到图片的属性
-                img_name = '{}_{}{}'.format(_file_prefix, cnt + 1, _file_suffix)  # 图片保存的信息
-                toolhelper.save_img(img_name, save_img_path,
-                                    auged_img)  # 保存增强图片
-
-                toolhelper.save_xml('{}_{}.xml'.format(_file_prefix, cnt + 1),
-                                    save_xml_path, (save_img_path, img_name), height, width, channel,
-                                    (labels, auged_bboxes_int))  # 保存xml文件
-                # show_pic(auged_img, auged_bboxes)  # 强化后的图
-                print(img_name)
-                cnt += 1  # 继续增强下一张
 

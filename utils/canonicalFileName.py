@@ -31,7 +31,7 @@ def replace_chinese_in_filenames(directory_path: str, translation_dict: dict):
                 print(f"Renamed '{filename}' to '{new_filename}'")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dir', type=str, default='./data/train/xml', help='directory path')
+parser.add_argument('--dir', type=str, default=r'E:\datasets\train\img', help='directory path')
 
 # Example usage
 if __name__ == "__main__":
