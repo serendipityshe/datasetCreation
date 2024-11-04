@@ -50,8 +50,8 @@ def visualise_gt(label_path, pic_path, newpic_path):
         cv2.imwrite(os.path.join(newpic_path, f"{name}.png"), im)
 
 if __name__ == '__main__':
-    pic_path = r"C:\Users\Administrator\datasetCreation\data\data_enhancement\images"
-    label_path = r"C:\Users\Administrator\datasetCreation\data\data_enhancement\labels"
+    pic_path = "/media/hz/新加卷/datasetCreation/datasetCreation/data/data_enhancement/testimgs"
+    label_path = "/media/hz/新加卷/datasetCreation/datasetCreation/data/data_enhancement/testlabels"
     newpic_path = 'vision/daylightingBand'
     if not os.path.isdir(newpic_path):
         os.makedirs(newpic_path)

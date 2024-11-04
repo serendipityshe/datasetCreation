@@ -3,7 +3,7 @@ import shutil
 
 
 
-delete_img = {'brickHouse_56_34', 'cai.tif_789_2345', 'cai.tif__567_45', 'south.tif_5_78'}
+delete_img = {'26.tif_9_9_DOM000', '20.tif_2_1_DOM200 (副本 2)', '26.tif_8_9_DOM100', '26.tif_17_5_DOM001 (副本 2)', '26.tif_8_9_DOM000', '26.tif_17_5_DOM200 (副本 9)', '26.tif_17_5_DOM011', '26.tif_8_9_DOM000 (副本)', '20.tif_2_1_DOM000', '26.tif_17_5_DOM000 (副本)', '26.tif_8_9_DOM100 (副本 2)', '26.tif_8_9_DOM011', '26.tif_8_9_DOM011 (副本 2)', '26.tif_8_9_DOM001 (副本 2)', '26.tif_9_9_DOM000 (副本)', '26.tif_8_9_DOM001', '26.tif_17_5_DOM200 (副本 6)', '26.tif_17_5_DOM200 (副本 8)', '26.tif_17_5_DOM200', '20.tif_2_1_DOM200 (副本)', '26.tif_9_9_DOM011 (副本)', '26.tif_9_9_DOM200 (副本 2)', '26.tif_17_5_DOM011 (副本 2)', '26.tif_8_9_DOM200', '26.tif_8_9_DOM100 (副本)', '26.tif_8_9_DOM001 (副本)', '26.tif_9_9_DOM200 (副本 5)', '26.tif_17_5_DOM010 (副本 2)', '26.tif_8_9_DOM200 (副本)', '26.tif_17_5_DOM200 (副本)', '26.tif_8_9_DOM000 (副本 2)', '26.tif_17_5_DOM100', '26.tif_17_5_DOM001 (副本)', '26.tif_17_5_DOM011 (副本)', '26.tif_9_9_DOM200 (副本 10)', '26.tif_9_9_DOM010 (副本 2)', '26.tif_17_5_DOM000', '26.tif_17_5_DOM200 (副本 11)', '26.tif_9_9_DOM200 (副本 3)', '26.tif_17_5_DOM200 (副本 7)', '26.tif_9_9_DOM100 (副本)', '20.tif_2_1_DOM200 (副本 3)', '26.tif_9_9_DOM010', '26.tif_9_9_DOM000 (副本 2)', '20.tif_2_1_DOM000 (副本)', '26.tif_17_5_DOM200 (副本 5)', '26.tif_17_5_DOM200 (副本 10)', '26.tif_8_9_DOM010', '26.tif_17_5_DOM010', '26.tif_17_5_DOM001', '26.tif_9_9_DOM100 (副本 2)', '26.tif_17_5_DOM200 (副本 4)', '26.tif_8_9_DOM200 (副本 2)', '26.tif_9_9_DOM200 (副本 4)', '26.tif_8_9_DOM011 (副本)', '26.tif_9_9_DOM100', '26.tif_9_9_DOM200 (副本 11)', '26.tif_17_5_DOM100 (副本)', '26.tif_9_9_DOM011 (副本 2)', '26.tif_9_9_DOM011', '26.tif_17_5_DOM200 (副本 3)', '26.tif_8_9_DOM010 (副本 2)', '26.tif_17_5_DOM200 (副本 2)', '26.tif_17_5_DOM100 (副本 2)', '20.tif_2_1_DOM000 (副本 3)'}
 
 
 def move_matching_files(source_directory, destination_directory):
@@ -37,8 +37,8 @@ def move_matching_files(source_directory, destination_directory):
                     print(f"Error moving file from {source_path} to {destination_path}: {e.strerror}")
 
 # 使用示例：调用函数以移动匹配的文件
-source_dir = r"C:\Users\Administrator\datasetCreation\data\data_enhancement\change\labels\val"  # 替换为实际的源目录路径
-destination_dir = r"C:\Users\Administrator\datasetCreation\data\data_enhancement\change\labels\del"  # 替换为实际的目标目录路径
+source_dir = "/media/hz/新加卷/data/change/images/train"  # 替换为实际的源目录路径
+destination_dir = "/media/hz/新加卷/data/change/images/del"  # 替换为实际的目标目录路径
 move_matching_files(source_dir, destination_dir)
 
 
