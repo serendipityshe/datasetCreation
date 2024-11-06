@@ -1,4 +1,4 @@
-from utils import dataEnhancement
+from utils.dataEnhancement import dataEnhancement
 
 A = dataEnhancement.aug('/media/hz/新加卷/data/1/img/train',
                         '/media/hz/新加卷/data/1/label/train',

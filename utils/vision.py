@@ -30,8 +30,9 @@ def visualise_gt(label_path, pic_path, newpic_path):
         boxes = []
         for line in lines:
             parts = line.strip().split(' ')
+            parts = list(map(lambda x: float(x)*512, filter(None, parts)))
             if len(parts) >= 8:
-                boxes.append(np.array(parts[:8], dtype=np.float64))
+                boxes.append(np.array(parts[1:9], dtype=np.float64))
         if not boxes:
             print('没有有效的框数据', result)
             continue
@@ -50,8 +51,8 @@ def visualise_gt(label_path, pic_path, newpic_path):
         cv2.imwrite(os.path.join(newpic_path, f"{name}.png"), im)
 
 if __name__ == '__main__':
-    pic_path = "/media/hz/新加卷/datasetCreation/datasetCreation/data/data_enhancement/testimgs"
-    label_path = "/media/hz/新加卷/datasetCreation/datasetCreation/data/data_enhancement/testlabels"
+    pic_path = r"D:\project\datasetCreation\data\daylightingBand\images\train_ex"
+    label_path = r"D:\project\datasetCreation\data\daylightingBand\labels\train_ex"
     newpic_path = 'vision/daylightingBand'
     if not os.path.isdir(newpic_path):
         os.makedirs(newpic_path)
