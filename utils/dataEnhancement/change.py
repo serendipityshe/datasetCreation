@@ -232,6 +232,7 @@ class aug:
             labelInfo = self.getBbox2MirrorHorizon(self.LabelPath + '/' + name_only + '.txt')
             self.label2txt(labelInfo, self.ExportLabelPath + '/' + name_only + flag + '.txt')
 
+
     def MirrorVertical(self, ratio = 1.0):
         '''垂直镜像
         Args: 
@@ -266,8 +267,8 @@ class aug:
         flag = '011'
         FileList = self.get_file_name(self.ImagePath)
         for filename in tqdm(FileList):
-            random_foloat = random.uniform(0, 1)
-            if ratio < random_foloat:
+            random_float = random.uniform(0, 1)
+            if ratio < random_float:
                 continue
             name_only = os.path.splitext(os.path.basename(filename))[0]
             image = cv2.imread(self.ImagePath + '/' + filename)
@@ -276,7 +277,7 @@ class aug:
             filpped = cv2.flip(image, -1)
             filpped_bgr = cv2.cvtColor(filpped, cv2.COLOR_RGB2BGR)
             cv2.imwrite(self.ExportImagePath + '/' + name_only + flag + '.tif', filpped_bgr)
-            labelInfo = self.getBbox2Vertical(self.LabelPath + '/' + name_only + '.txt')
+            labelInfo = self.getBbox2HV(self.LabelPath + '/' + name_only + '.txt')
             self.label2txt(labelInfo, self.ExportLabelPath + '/' + name_only + flag + '.txt')
 
 
@@ -341,8 +342,6 @@ class aug:
             transformed_pil.save(self.ExportImagePath + '/' + name_only + flag + '.tif')
 
             shutil.copy(self.LabelPath + '/' + name_only + '.txt', self.ExportLabelPath + '/' + name_only + flag + '.txt')
-
-
 
 
 if __name__ == "__main__":
