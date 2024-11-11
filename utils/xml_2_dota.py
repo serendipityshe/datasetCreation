@@ -157,9 +157,9 @@ def totxt(xml_path, out_path):
  
 if __name__ == '__main__':
     # -----**** 第一步：把xml文件统一转换成旋转框的xml文件 ****-----
-    roxml_path = './data/xml' # 存放roLabelImg标注的原文件的文件夹
-    dotaxml_path = './data/xml2' # 存放转换后DOTA数据集xml格式文件的文件夹
-    out_path = './data/txt' # 存放转换后DOTA数据集txt格式文件的文件夹
+    roxml_path = r'D:\DATA\longji_data\label' # 存放roLabelImg标注的原文件的文件夹
+    dotaxml_path = r'D:\DATA\longji_data\label_dota_xml' # 存放转换后DOTA数据集xml格式文件的文件夹
+    out_path = r'D:\DATA\longji_data\label_dotatxt' # 存放转换后DOTA数据集txt格式文件的文件夹
     filelist = os.listdir(roxml_path)
  
     for file in filelist:

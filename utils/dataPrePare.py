@@ -50,8 +50,8 @@ if __name__ == "__main__":
     preparer = DataPreparer()
 
     # 比较文件夹
-    folder_path_1 = '/media/hz/新加卷/data/change/images/test'
-    folder_path_2 = '/media/hz/新加卷/data/change/labels/train'
+    folder_path_1 = r'D:\DATA\img_hlabel'
+    folder_path_2 = r'D:\DATA\predict\del'
     missing_in_1, missing_in_2 = preparer.compare_folders(folder_path_1, folder_path_2)
     print(f"Missing in folder 1: {missing_in_1}")
     print(f"Missing in folder 2: {missing_in_2}")

@@ -1,194 +1,319 @@
+import os 
+from tqdm import tqdm
 import random
 import cv2
-from matplotlib import pyplot as plt
-from tqdm import tqdm
+import numpy as np
+import pyhocon
 import albumentations as A
 import shutil
-import os
 import time
-import matplotlib.pyplot as plt
-import numpy as np
-import math
 from PIL import Image
 
 
 class aug:
-    def __init__(self, ImP, LaP, OutImP, OutLaP, conf_path):
-        self.__ImagePath = ImP
-        self.__LablePath = LaP
-        self.__OutImP = OutImP
-        self.__OutLaP = OutLaP
-        pass
+    # 图像增强
+    def __init__(self, ImP: str, LaP: str, ExImP: str, ExLaP: str, file_format: str = 'yolo_txt') -> None:
+        self.ImagePath = ImP
+        self.LabelPath = LaP
+        self.ExportImagePath = ExImP
+        self.ExportLabelPath = ExLaP
+        self.FileFormat = file_format
 
-    def __GetFile(self, folder_path):
+#--------------------------------------------------Foundation Work--------------------------------------------------------------
+
+    def get_file_name(self, path):
+        '''
+        获取目录下的文件名字(带后缀)
+        Args:
+            path: 文件路径
+        '''
         file_names = []
-        for file_name in os.listdir(folder_path):
-            if os.path.isfile(os.path.join(folder_path, file_name)):
-                file_names.append(file_name)
+        for file_entry in os.scandir(path):
+            if file_entry.is_file():
+                file_names.append(file_entry.name)
         return file_names
+
+    def get_bboxes(self, txt_file_path):
+        '''
+        获取yolo_txt文件中的矩形框坐标
+        Args:
+            txt_file_path: txt文件路径
+        '''
+        with open(txt_file_path, 'r') as f:
+            lines = f.readlines()
+        bboxes = []
+        for line in lines:
+            class_id, x1, y1, x2, y2, x3, y3, x4, y4 = map(float, line.split())
+            bboxes.append([class_id, x1, y1, x2, y2, x3, y3, x4, y4])
+        return bboxes
     
-    def __GetBbox(self, txt_file_path):
-        with open(txt_file_path, 'r') as f:
-            lines = f.readlines()
-        bbox = []
-        for line in lines:
-            parts = line.strip().split(',')
-            category = parts[0].split()
-            x1, y1, x2, y2, x3, y3, x4, y4, classes, diff = category[:]
-            x1 = float(x1)
-            x2 = float(x2)
-            x3 = float(x3)
-            x4 = float(x4)
-            y1 = float(y1)
-            y2 = float(y2)
-            y3 = float(y3)
-            y4 = float(y4)
-            bbox.append([x1, y1, x2, y2, x3, y3, x4, y4, classes, diff])
-        return bbox
-
-    def __GetBbox2MirrorHorizon(self, txt_file_path, w):
-        with open(txt_file_path, 'r') as f:
-            lines = f.readlines()
-        bbox = []
-        for line in lines:
-            parts = line.strip().split(',')
-            category = parts[0].split()
-            x1, y1, x2, y2, x3, y3, x4, y4, classes, diff = category[:]
-            x1 = float(x1)
-            x2 = float(x2)
-            x3 = float(x3)
-            x4 = float(x4)
-            y1 = float(y1)
-            y2 = float(y2)
-            y3 = float(y3)
-            y4 = float(y4)
-            space_separated_string = ' '.join(map(str, [w - x1, y1, w - x2, y2, w - x3, y3, w - x4, y4, classes, diff]))
-            bbox.append(space_separated_string)
-        return bbox
-
-    def __GetBbox2Vertical(self, txt_file_path, h):
-        with open(txt_file_path, 'r') as f:
-            lines = f.readlines()
-        bbox = []
-        for line in lines:
-            parts = line.strip().split(',')
-            category = parts[0].split()
-            x1, y1, x2, y2, x3, y3, x4, y4, classes, diff = category[:]
-            x1 = float(x1)
-            x2 = float(x2)
-            x3 = float(x3)
-            x4 = float(x4)
-            y1 = float(y1)
-            y2 = float(y2)
-            y3 = float(y3)
-            y4 = float(y4)
-            space_separated_string = ' '.join(map(str, [x1, h - y1, x2, h - y2, x3, h - y3, x4, h - y4, classes, diff]))
-            bbox.append(space_separated_string)
-        return bbox
-
-    def __GetBbox2HV(self, txt_file_path, w, h):
-        with open(txt_file_path, 'r') as f:
-            lines = f.readlines()
-        bbox = []
-        for line in lines:
-            parts = line.strip().split(',')
-            category = parts[0].split()
-            x1, y1, x2, y2, x3, y3, x4, y4, classes, diff = category[:]
-            x1 = float(x1)
-            x2 = float(x2)
-            x3 = float(x3)
-            x4 = float(x4)
-            y1 = float(y1)
-            y2 = float(y2)
-            y3 = float(y3)
-            y4 = float(y4)
-            space_separated_string = ' '.join(
-                map(str, [w - x1, h - y1, w - x2, h - y2, w - x3, h - y3, w - x4, h - y4, classes, diff]))
-            bbox.append(space_separated_string)
-        return bbox
-
-    def __GetBboxRotate(self, txt_file_path, angle, w, h, d):
-        with open(txt_file_path, 'r') as f:
-            lines = f.readlines()
-        bbox = []
-        for line in lines:
-            parts = line.strip().split(',')
-            category = parts[0].split()
-            x1, y1, x2, y2, x3, y3, x4, y4, classes, diff = category[:]
-            cx = w / 2
-            cy = h / 2
-            cos = np.cos(np.deg2rad(360 - angle))
-            sin = np.sin(np.deg2rad(360 - angle))
-            x1 = float(x1) - cx
-            x2 = float(x2) - cx
-            x3 = float(x3) - cx
-            x4 = float(x4) - cx
-            y1 = float(y1) - cy
-            y2 = float(y2) - cy
-            y3 = float(y3) - cy
-            y4 = float(y4) - cy
-            new_x1 = round(x1 * cos - y1 * sin)
-            new_y1 = round(x1 * sin + y1 * cos)
-            new_x2 = round(x2 * cos - y2 * sin)
-            new_y2 = round(x2 * sin + y2 * cos)
-            new_x3 = round(x3 * cos - y3 * sin)
-            new_y3 = round(x3 * sin + y3 * cos)
-            new_x4 = round(x4 * cos - y4 * sin)
-            new_y4 = round(x4 * sin + y4 * cos)
-            new_x1 = new_x1 + cx * d
-            new_y1 = new_y1 + cy * d
-            new_x2 = new_x2 + cx * d
-            new_y2 = new_y2 + cy * d
-            new_x3 = new_x3 + cx * d
-            new_y3 = new_y3 + cy * d
-            new_x4 = new_x4 + cx * d
-            new_y4 = new_y4 + cy * d
-            space_separated_string = ' '.join(
-                map(str, [new_x1, new_y1, new_x2, new_y2, new_x3, new_y3, new_x4, new_y4, classes, diff]))
-            bbox.append(space_separated_string)
-        return bbox
-
-    def __GetBboxResize(self, txt_file_path, scale, left, top):
-        with open(txt_file_path, 'r') as f:
-            lines = f.readlines()
-        bbox = []
-        for line in lines:
-            parts = line.strip().split(',')
-            category = parts[0].split()
-            x1, y1, x2, y2, x3, y3, x4, y4, classes, diff = category[:]
-            x1 = float(x1) * scale + left
-            x2 = float(x2) * scale + left
-            x3 = float(x3) * scale + left
-            x4 = float(x4) * scale + left
-            y1 = float(y1) * scale + top
-            y2 = float(y2) * scale + top
-            y3 = float(y3) * scale + top
-            y4 = float(y4) * scale + top
-            space_separated_string = ' '.join(map(str, [x1, y1, x2, y2, x3, y3, x4, y4, classes, diff]))
-            bbox.append(space_separated_string)
-        return bbox
-
-
-    def __lable2txt(self, lableInfo, txtPath):
+    
+    def label2txt(self, labelInfo, txtPath):
         with open(txtPath, 'w') as f:
-            f.writelines([line + os.linesep for line in lableInfo])
+            f.writelines([line + os.linesep for line in labelInfo])
 
-    def AddWeather(self,ratio=1.0):
+#-----------------------------------------------Label Conversion-------------------------------------------------------------
+# 1. 旋转
+# 2. 水平镜像
+# 3. 垂直镜像
+# 4. 水平垂直镜像
+# 5. 随机裁剪
+# 6. 添加噪声（添加天气情况）
+
+    def __rotate_and_scale_point(self, x, y, cx, cy, cos, sin, d):
+        '''辅助函数： 旋转图片对应的label变换
+        Args:
+            x: x坐标
+            y: y坐标
+            cos: 
+            sin: 
+            d: 
         '''
-        AddWeather:对文件夹中的图片进行天气增强 1:1:1:1=雨天:雪天:日光:阴影
+        new_x = (x - 0.5) * cos - (y - 0.5) * sin + 0.5 * d
+        new_y = (y - 0.5) * cos + (x - 0.5) * sin + 0.5 * d
+        return new_x, new_y
+
+
+    def getBboxRotate(self, txt_file_path, angle, w, h, d):
+        '''旋转图像和坐标
         '''
-        flag = '000'
-        Filelist = self.__GetFile(self.__ImagePath)
+        bbox = []
+        bboxes = self.get_bboxes(txt_file_path)
+        cx = w / 2
+        cy = h / 2
+        cos = np.cos(np.deg2rad(-angle))  # 修正了角度，使其符合常规的顺时针旋转
+        sin = np.sin(np.deg2rad(-angle))  # 同上
+        for bbox_data in bboxes:
+            class_id, x1, y1, x2, y2, x3, y3, x4, y4 = bbox_data[:]
+            
+            # 对每个点进行旋转和缩放变换
+            new_x1, new_y1 = self.__rotate_and_scale_point(x1, y1, cx, cy, cos, sin, d)
+            new_x2, new_y2 = self.__rotate_and_scale_point(x2, y2, cx, cy, cos, sin, d)
+            new_x3, new_y3 = self.__rotate_and_scale_point(x3, y3, cx, cy, cos, sin, d)
+            new_x4, new_y4 = self.__rotate_and_scale_point(x4, y4, cx, cy, cos, sin, d)
+            
+            # 构建并添加变换后的边界框字符串到bbox列表
+            space_separated_string = ' '.join(map(str, [class_id, new_x1, new_y1, new_x2, new_y2, new_x3, new_y3, new_x4, new_y4]))
+            bbox.append(space_separated_string)
+        
+        return bbox
+    
+    def getBbox2MirrorHorizon(self, txt_path):
+        '''水平镜像变换
+        Args:
+            txt_path: txt文件路径
+        Returns:
+            bbox: 变换后的边界框列表
+        '''
+        bbox = []
+        bboxes = self.get_bboxes(txt_path)
+        for bbox_data in bboxes:
+            class_id, x1, y1, x2, y2, x3, y3, x4, y4 = bbox_data[:]
+            space_separated_string = ' '.join(map(str, [class_id, 1 - x1, y1, 1 - x2, y2, 1 - x3, y3, 1 - x4, y4]))
+            bbox.append(space_separated_string)
+        return bbox
+    
+    def getBbox2Vertical(self, txt_path):
+        '''垂直镜像变换
+        Args:
+            txt_path: txt文件路径
+        Returns:
+            bbox: 变换后的边界框列表
+        '''
+        bbox = []
+        bboxes = self.get_bboxes(txt_path)
+        for bbox_data in bboxes:
+            class_id, x1, y1, x2, y2, x3, y3, x4, y4 = bbox_data[:]
+            space_separated_string = ' '.join(map(str, [class_id, x1, 1 - y1, x2, 1 - y2, x3, 1 - y3, x4, 1 - y4]))
+            bbox.append(space_separated_string)
+        return bbox
+    
+    def getBbox2HV(self, txt_path):
+        '''水平垂直镜像变换
+        Args:
+            txt_path: txt文件路径
+        Returns:
+            bbox: 变换后的边框列表
+        ''' 
+        bbox = []
+        bboxes = self.get_bboxes(txt_path)
+        for bbox_data in bboxes:
+            class_id, x1, y1, x2, y2, x3, y3, x4, y4 = bbox_data[:]
+            space_separated_string = ' '.join(map(str, [class_id, 1 - x1, 1 - y1, 1 - x2, 1 - y2, 1 - x3, 1 - y3, 1 - x4, 1 - y4]))
+            bbox.append(space_separated_string)
+        return bbox
+
+    def getBbox2Resize(self, txt_path, scale, left, top):
+        '''随机裁剪
+        Args:
+            txt_path: txt文件路径
+            scale: 缩放比例
+            left: 左边距
+            top: 顶部边距
+        Returns:
+            bbox: 变换后的边框列表
+        '''
+        bbox = []
+        bboxes = self.get_bboxes(txt_path)
+        for bbox_data in bboxes:
+            class_id, x1, y1, x2, y2, x3, y3, x4, y4 = bbox_data[:]
+            space_separated_string = ' '.join(map(str, [class_id, x1*scale+left, y1*scale+top, x2*scale+left, y2*scale+top, 
+                                                       x3*scale+left, y3*scale+top, x4*scale+left, y4*scale+top]))
+            bbox.append(space_separated_string)
+        return bbox
+
+ 
+
+#--------------------------------------------Image Conversion------------------------------------------------------
+# 1. 旋转
+# 2. 水平镜像
+# 3. 垂直镜像
+# 4. 水平垂直镜像
+# 5. 随机裁剪
+# 6. 添加噪声（添加天气情况）
+
+
+    def Rotate(self, angle=45, ratio=1.0):
+        '''旋转图像和坐标
+        Args:
+            angle: 旋转角度
+            ratio: 数据增强的概率
+        Returns:
+            None
+        '''
+        flag = '100'
+        Filelist = self.get_file_name(self.ImagePath)
         for filename in tqdm(Filelist):
             random_float = random.uniform(0, 1)
             if ratio < random_float:
                 continue
             name_only = os.path.splitext(os.path.basename(filename))[0]
-            image = cv2.imread(self.__ImagePath + '/' + filename)
+            image = cv2.imread(self.ImagePath + '/' + filename)
+            height, width, _ = image.shape
+            center = (width / 2, height / 2)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+            matrix = cv2.getRotationMatrix2D(center, angle, 1)
+
+            cos = np.abs(matrix[0, 0])
+            sin = np.abs(matrix[0, 1])
+            new_width = int((height * sin) + (width * cos))
+            new_height = int((height * cos) + (width * sin))
+
+            matrix[0, 2] += (new_width - width) / 2
+            matrix[1, 2] += (new_height - height) / 2
+
+            rotated = cv2.warpAffine(image, matrix, (new_width, new_height), borderValue=(0, 0, 0))
+            
+            rotated_bgr = cv2.cvtColor(rotated, cv2.COLOR_RGB2BGR)
+
+            cv2.imwrite(self.ExportImagePath + '/' + name_only + flag + '.tif', rotated_bgr)
+            labelInfo = self.getBboxRotate(self.LabelPath + '/' + name_only + '.txt', angle, width, height, new_height / height)
+            self.label2txt(labelInfo, self.ExportLabelPath + '/' + name_only + flag + '.txt')
+
+
+    def MirrorHorizon(self, ratio = 1.0):
+        '''水平镜像
+        '''
+        flag = '001'
+        FileList = self.get_file_name(self.ImagePath)
+        for filename in tqdm(FileList):
+            random_float = random.uniform(0, 1)
+            if ratio < random_float:
+                continue
+            name_only = os.path.splitext(os.path.basename(filename))[0]
+            image = cv2.imread(self.ImagePath + '/' + filename)
+            height, width, _ = image.shape
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            flipped = cv2.flip(image, 1)
+
+            flipped_bgr = cv2.cvtColor(flipped, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(self.ExportImagePath + '/' + name_only + flag + '.tif', flipped_bgr)
+            labelInfo = self.getBbox2MirrorHorizon(self.LabelPath + '/' + name_only + '.txt')
+            self.label2txt(labelInfo, self.ExportLabelPath + '/' + name_only + flag + '.txt')
+
+
+    def MirrorVertical(self, ratio = 1.0):
+        '''垂直镜像
+        Args: 
+            ratio: 数据增强的概率
+        Returns:
+            None
+        '''
+        flag = '010'
+        FileList = self.get_file_name(self.ImagePath)
+        for filename in tqdm(FileList):
+            random_foloat = random.uniform(0, 1)
+            if ratio < random_foloat:
+                continue
+            name_only = os.path.splitext(os.path.basename(filename))[0]
+            image = cv2.imread(self.ImagePath + '/' + filename)
+            height, width, _ = image.shape
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            filpped = cv2.flip(image, 0)
+            filpped_bgr = cv2.cvtColor(filpped, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(self.ExportImagePath + '/' + name_only + flag + '.tif', filpped_bgr)
+            labelInfo = self.getBbox2Vertical(self.LabelPath + '/' + name_only + '.txt')
+            self.label2txt(labelInfo, self.ExportLabelPath + '/' + name_only + flag + '.txt')
+
+
+    def MirrorHV(self, ratio = 1.0):
+        '''水平垂直镜像
+        Args:
+            ratio: 数据增强的概率
+        Returns:
+            None
+        '''
+        flag = '011'
+        FileList = self.get_file_name(self.ImagePath)
+        for filename in tqdm(FileList):
+            random_float = random.uniform(0, 1)
+            if ratio < random_float:
+                continue
+            name_only = os.path.splitext(os.path.basename(filename))[0]
+            image = cv2.imread(self.ImagePath + '/' + filename)
+            height, width, _ = image.shape
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            filpped = cv2.flip(image, -1)
+            filpped_bgr = cv2.cvtColor(filpped, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(self.ExportImagePath + '/' + name_only + flag + '.tif', filpped_bgr)
+            labelInfo = self.getBbox2HV(self.LabelPath + '/' + name_only + '.txt')
+            self.label2txt(labelInfo, self.ExportLabelPath + '/' + name_only + flag + '.txt')
+
+
+    def RandomCrop(self, min_scale = 0.3, max_scale = 0.7, ratio = 1.0):
+        '''随机裁剪
+
+        '''
+        flag = '200'
+        FileList = self.get_file_name(self.ImagePath)
+        for filename in tqdm(FileList):
+            random_foloat = random.uniform(0, 1)
+            if ratio < random_foloat:
+                continue
+            name_only = os.path.splitext(os.path.basename(filename))[0]
+            image = cv2.imread(self.ImagePath + '/' + filename)
+            height, width, _ = image.shape
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            random_scale = random.uniform(min_scale, max_scale)
+
+    
+    def AddWeather(self, ratio = 1):
+        '''添加噪声(AddWeather:对文件夹中的图片进行天气增强 1:1:1:1=雨天:雪天:日光:阴影)
+        Args: 
+            ratio: 数据增强的概率
+        '''
+        flag = '000'
+        FileList = self.get_file_name(self.ImagePath)
+        for filename in tqdm(FileList):
+            random_float = random.uniform(0, 1)
+            if ratio < random_float:
+                continue
+            name_only = os.path.splitext(os.path.basename(filename))[0]
+            image = cv2.imread(self.ImagePath + '/' + filename)
             height, width, _ = image.shape
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             random_number = random.randint(0, 3)
-            # random_number=0
             if random_number == 0:
                 transform = A.Compose(
                     [A.RandomRain(brightness_coefficient=0.9, drop_width=1, blur_value=5, p=1)],
@@ -208,155 +333,26 @@ class aug:
                 transform = A.Compose(
                     [A.GaussNoise(var_limit=var_limit, p=1)],
                 )
-            #            elif random_number==2:
-            #                transform = A.Compose(
-            #                    [A.RandomSunFlare(flare_roi=(0, 0, 1, 1), angle_lower=0.2, p=1)],
-            #                )
-            #            else:
-            #                transform = A.Compose(
-            #                    [A.RandomShadow(num_shadows_lower=1, num_shadows_upper=3, shadow_dimension=5, shadow_roi=(0, 0.5, 1, 1), p=1)],
-            #                )
             random.seed(time.time())
             transformed = transform(image=image)
             # Convert the transformed image back to a PIL image
             transformed_pil = Image.fromarray(transformed['image'])
 
             # Save the transformed image as a TIF image
-            transformed_pil.save(self.__OutImP + '/' + name_only + flag + '.tif')
+            transformed_pil.save(self.ExportImagePath + '/' + name_only + flag + '.tif')
 
-            shutil.copy(self.__LablePath + '/' + name_only + '.txt', self.__OutLaP + '/' + name_only + flag + '.txt')
-
-    def MirrorHorizon(self, ratio=1.0):
-        '''
-        MirrorHorizon: 水平镜像图像
-        ratio: float < 1.0
-        '''
-        flag = '001'
-        Filelist = self.__GetFile(self.__ImagePath)
-        # if random_float<ratio:
-        for filename in tqdm(Filelist):
-            random_float = random.uniform(0, 1)
-            if ratio < random_float:
-                continue
-            name_only = os.path.splitext(os.path.basename(filename))[0]
-            image = cv2.imread(self.__ImagePath + '/' + filename)
-            height, width, _ = image.shape
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            # 水平镜像
-            flipped = cv2.flip(image, 1)
-            # Convert the flipped image back to BGR format
-            flipped_bgr = cv2.cvtColor(flipped, cv2.COLOR_RGB2BGR)
-            # 保存镜像后的图像文件
-            cv2.imwrite(self.__OutImP + '/' + name_only + flag + '.tif', flipped_bgr)
-            lableInfo = self.__GetBbox2MirrorHorizon(self.__LablePath + '/' + name_only + '.txt', width)
-            self.__lable2txt(lableInfo, self.__OutLaP + '/' + name_only + flag + '.txt')
-
-    def MirrorVertical(self, ratio=1.0):
-        '''
-        MirrorVertical: 竖直镜像图像
-        ratio: float < 1.0
-        '''
-        flag = '010'
-        Filelist = self.__GetFile(self.__ImagePath)
-        # if random_float<ratio:
-        for filename in tqdm(Filelist):
-            random_float = random.uniform(0, 1)
-            if ratio < random_float:
-                continue
-            name_only = os.path.splitext(os.path.basename(filename))[0]
-            image = cv2.imread(self.__ImagePath + '/' + filename)
-            height, width, _ = image.shape
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            # 竖直镜像
-            flipped = cv2.flip(image, 0)
-            flipped_bgr = cv2.cvtColor(flipped, cv2.COLOR_RGB2BGR)
-            # 保存镜像后的图像文件
-            cv2.imwrite(self.__OutImP + '/' + name_only + flag + '.tif', flipped_bgr)
-            lableInfo = self.__GetBbox2Vertical(self.__LablePath + '/' + name_only + '.txt', height)
-            self.__lable2txt(lableInfo, self.__OutLaP + '/' + name_only + flag + '.txt')
-
-    def MirrorHorizonAndVertical(self, ratio=1.0):
-        '''
-        MirrorHorizonAndVertical: 水平竖直镜像图像
-        ratio: float < 1.0
-        '''
-        flag = '011'
-        Filelist = self.__GetFile(self.__ImagePath)
-        # if random_float<ratio:
-        for filename in tqdm(Filelist):
-            random_float = random.uniform(0, 1)
-            if ratio < random_float:
-                continue
-            name_only = os.path.splitext(os.path.basename(filename))[0]
-            image = cv2.imread(self.__ImagePath + '/' + filename)
-            height, width, _ = image.shape
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            # 竖直镜像
-            flipped = cv2.flip(image, -1)
-            flipped_bgr = cv2.cvtColor(flipped, cv2.COLOR_RGB2BGR)
-            # 保存镜像后的图像文件
-            cv2.imwrite(self.__OutImP + '/' + name_only + flag + '.tif', flipped_bgr)
-            lableInfo = self.__GetBbox2HV(self.__LablePath + '/' + name_only + '.txt', width, height)
-            self.__lable2txt(lableInfo, self.__OutLaP + '/' + name_only + flag + '.txt')
-
-    def Rotate(self, angle=45, ratio=1.0):
-        flag = '100'
-        Filelist = self.__GetFile(self.__ImagePath)
-        # if random_float<ratio:
-        for filename in tqdm(Filelist):
-            random_float = random.uniform(0, 1)
-            if ratio < random_float:
-                continue
-            name_only = os.path.splitext(os.path.basename(filename))[0]
-            image = cv2.imread(self.__ImagePath + '/' + filename)
-            height, width, _ = image.shape
-            center = (width / 2, height / 2)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            # 计算旋转矩阵
-            matrix = cv2.getRotationMatrix2D(center, angle, 1)
-            # 计算旋转后的图像大小
-            cos = np.abs(matrix[0, 0])
-            sin = np.abs(matrix[0, 1])
-            new_width = int(height * sin + width * cos)
-            new_height = int(height * cos + width * sin)
-            # 调整旋转矩阵以考虑新的大小
-            matrix[0, 2] += (new_width - width) / 2
-            matrix[1, 2] += (new_height - height) / 2
-            # 旋转图像并填充黑色
-            rotated = cv2.warpAffine(image, matrix, (new_width, new_height), borderValue=(0, 0, 0))
-            # Convert the rotated image back to BGR format
-            rotated_bgr = cv2.cvtColor(rotated, cv2.COLOR_RGB2BGR)
-            # Save the rotated image as a BGR image
-            cv2.imwrite(self.__OutImP + '/' + name_only + flag + '.tif', rotated_bgr)
-            lableInfo = self.__GetBboxRotate(self.__LablePath + '/' + name_only + '.txt', angle, width, height,
-                                             new_height / height)
-            self.__lable2txt(lableInfo, self.__OutLaP + '/' + name_only + flag + '.txt')
-
-    def RandomResize(self, min_scale=0.3, max_scale=0.7, ratio=1):
-        flag = '200'
-        Filelist = self.__GetFile(self.__ImagePath)
-        for filename in tqdm(Filelist):
-            random_float = random.uniform(0, 1)
-            if ratio < random_float:
-                continue
-            name_only = os.path.splitext(os.path.basename(filename))[0]
-            image = cv2.imread(os.path.join(self.__ImagePath, filename))
-            height, width, _ = image.shape
-            scale = random.uniform(min_scale, max_scale)
-            new_width = int(width * scale)
-            new_height = int(height * scale)
-            resized = cv2.resize(image, (new_width, new_height))
-
-            # 添加填充以保持原始分辨率
-            top = (height - new_height) // 2
-            bottom = height - new_height - top
-            left = (width - new_width) // 2
-            right = width - new_width - left
-            padded_image = cv2.copyMakeBorder(resized, top, bottom, left, right, cv2.BORDER_CONSTANT, value=0)
-
-            cv2.imwrite(self.__OutImP + '/' + name_only + flag + '.tif', padded_image)
-            lableInfo = self.__GetBboxResize(self.__LablePath + '/' + name_only + '.txt', scale, left, top)
-            self.__lable2txt(lableInfo, self.__OutLaP + '/' + name_only + flag + '.txt')
+            shutil.copy(self.LabelPath + '/' + name_only + '.txt', self.ExportLabelPath + '/' + name_only + flag + '.txt')
 
 
-
+if __name__ == "__main__":
+    aug = aug(r'D:\DATA\dataset\images\train',
+              r'D:\DATA\dataset\labels\train',
+              r'D:\DATA\dataset\images\train_ex',
+              r'D:\DATA\dataset\labels\train_ex')
+    
+    aug.Rotate()
+    aug.MirrorHV()
+    aug.AddWeather()
+    aug.RandomCrop()
+    aug.MirrorVertical()
+    aug.MirrorHorizon()

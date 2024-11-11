@@ -22,6 +22,6 @@ def get_filenames_without_extension(directory):
     return filenames
 
 # 使用示例：调用函数并打印结果
-directory_path = r"C:\Users\Administrator\datasetCreation\data\dataMerge\images_o\train"  # 替换为实际的目录路径
+directory_path = r"D:\DATA\predict"  # 替换为实际的目录路径
 file_names = get_filenames_without_extension(directory_path)
 print(file_names)

@@ -51,8 +51,8 @@ def visualise_gt(label_path, pic_path, newpic_path):
         cv2.imwrite(os.path.join(newpic_path, f"{name}.png"), im)
 
 if __name__ == '__main__':
-    pic_path = r"D:\project\datasetCreation\data\daylightingBand\images\train_ex"
-    label_path = r"D:\project\datasetCreation\data\daylightingBand\labels\train_ex"
+    pic_path = r"D:\DATA\dataset\images\train_ex"
+    label_path = r"D:\DATA\dataset\labels\train_ex"
     newpic_path = 'vision/daylightingBand'
     if not os.path.isdir(newpic_path):
         os.makedirs(newpic_path)
