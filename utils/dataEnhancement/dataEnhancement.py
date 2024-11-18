@@ -8,6 +8,7 @@ import albumentations as A
 import shutil
 import time
 from PIL import Image
+import skimage
 
 
 class aug:
@@ -313,7 +314,8 @@ class aug:
             image = cv2.imread(self.ImagePath + '/' + filename)
             height, width, _ = image.shape
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            random_number = random.randint(0, 3)
+            # random_number = random.randint(0, 3)
+            random_number = 3
             if random_number == 0:
                 transform = A.Compose(
                     [A.RandomRain(brightness_coefficient=0.9, drop_width=1, blur_value=5, p=1)],
@@ -329,11 +331,10 @@ class aug:
                     [A.RandomBrightnessContrast(brightness_limit=brightness_limit, contrast_limit=contrast_limit, p=1)],
                 )
             elif random_number == 3:
-                var_limit = (10, 50)  # 高斯噪声的方差范围，可以根据需要调整
+                var_limit = (10, 255)  # 高斯噪声的方差范围，可以根据需要调整
                 transform = A.Compose(
                     [A.GaussNoise(var_limit=var_limit, p=1)],
                 )
-            random.seed(time.time())
             transformed = transform(image=image)
             # Convert the transformed image back to a PIL image
             transformed_pil = Image.fromarray(transformed['image'])
@@ -345,14 +346,14 @@ class aug:
 
 
 if __name__ == "__main__":
-    aug = aug(r'D:\DATA\dataset\images\train',
-              r'D:\DATA\dataset\labels\train',
-              r'D:\DATA\dataset\images\train_ex',
-              r'D:\DATA\dataset\labels\train_ex')
+    aug = aug(r'D:\DAS_DATASET\data\test\datasets\train\images',
+              r'D:\DAS_DATASET\data\test\datasets\train\labels',
+              r'D:\DAS_DATASET\data\test\datasets\train\images\images_ex',
+              r'D:\DAS_DATASET\data\test\datasets\train\labels\labels_ex')
     
-    aug.Rotate()
-    aug.MirrorHV()
+    # aug.Rotate()
+    # aug.MirrorHV()
     aug.AddWeather()
-    aug.RandomCrop()
-    aug.MirrorVertical()
-    aug.MirrorHorizon()
+    # aug.RandomCrop()
+    # aug.MirrorVertical()
+    # aug.MirrorHorizon()

@@ -42,6 +42,9 @@ def visualise_gt(label_path, pic_path, newpic_path):
         name = os.path.splitext(os.path.basename(result))[0]
         filepath = os.path.join(pic_path, f"{name}.tif")
         im = cv2.imread(filepath)
+        im_h = im.shape[0]
+        im_w = im.shape[1] 
+
         
         for box in boxes:
             box = np.array([[box[0], box[1]], [box[2], box[3]], [box[4], box[5]], [box[6], box[7]]], np.int32)
