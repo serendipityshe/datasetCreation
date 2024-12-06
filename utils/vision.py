@@ -26,6 +26,12 @@ def visualise_gt(label_path, pic_path, newpic_path):
             print('文件为空', result)
             continue
         
+        name = os.path.splitext(os.path.basename(result))[0]
+        filepath = os.path.join(pic_path, f"{name}.jpg")
+        im = cv2.imread(filepath)
+        im_h = im.shape[0]
+        im_w = im.shape[1]
+        
         # 过滤掉空行和包含少于8个元素的行
         boxes = []
         for line in lines:
@@ -39,11 +45,7 @@ def visualise_gt(label_path, pic_path, newpic_path):
         
         boxes = np.array(boxes)
         
-        name = os.path.splitext(os.path.basename(result))[0]
-        filepath = os.path.join(pic_path, f"{name}.tif")
-        im = cv2.imread(filepath)
-        im_h = im.shape[0]
-        im_w = im.shape[1] 
+ 
 
         
         for box in boxes:
@@ -54,9 +56,9 @@ def visualise_gt(label_path, pic_path, newpic_path):
         cv2.imwrite(os.path.join(newpic_path, f"{name}.png"), im)
 
 if __name__ == '__main__':
-    pic_path = r"D:\DATA\dataset\images\train_ex"
-    label_path = r"D:\DATA\dataset\labels\train_ex"
-    newpic_path = 'vision/daylightingBand'
+    pic_path = r"E:\test_data\images"
+    label_path = r"E:\test_data\labels"
+    newpic_path = 'vision/test4'
     if not os.path.isdir(newpic_path):
         os.makedirs(newpic_path)
     visualise_gt(label_path, pic_path, newpic_path)

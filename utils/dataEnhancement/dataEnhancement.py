@@ -44,7 +44,9 @@ class aug:
             lines = f.readlines()
         bboxes = []
         for line in lines:
-            class_id, x1, y1, x2, y2, x3, y3, x4, y4 = map(float, line.split())
+            parts = line.split()
+            class_id = int(parts[0])  # 将class_id转换为整数
+            x1, y1, x2, y2, x3, y3, x4, y4 = map(float, parts[1:])
             bboxes.append([class_id, x1, y1, x2, y2, x3, y3, x4, y4])
         return bboxes
     
@@ -61,37 +63,78 @@ class aug:
 # 5. 随机裁剪
 # 6. 添加噪声（添加天气情况）
 
-    def __rotate_and_scale_point(self, x, y, cx, cy, cos, sin, d):
-        '''辅助函数： 旋转图片对应的label变换
-        Args:
-            x: x坐标
-            y: y坐标
-            cos: 
-            sin: 
-            d: 
-        '''
-        new_x = (x - 0.5) * cos - (y - 0.5) * sin + 0.5 * d
-        new_y = (y - 0.5) * cos + (x - 0.5) * sin + 0.5 * d
-        return new_x, new_y
+    # def __rotate_and_scale_point(self, x, y, w, h, cos, sin, d):
+    #     '''辅助函数： 旋转图片对应的label变换
+    #     Args:
+    #         x: x坐标
+    #         y: y坐标
+    #         cos: 
+    #         sin: 
+    #         d: 
+    #     '''
+    #     if w == h:
+    #         new_x = (x - 0.5) * cos - (y - 0.5) * sin + 0.5 * d
+    #         new_y = (y - 0.5) * cos + (x - 0.5) * sin + 0.5 * d
+    #     else:
+    #         cx = w / 2
+    #         cy = h / 2
+    #         new_x = ((x * w - cx) * cos - (y * h - cy) * sin + cx) * d
+    #         new_y = ((y * h- cy) * cos + (x * w - cx) * sin + cy) * d
+    #     return new_x, new_y
 
+    def __rotate_and_scale_point(self, x, y, w, h, cos, sin, d):
+        '''辅助函数：旋转图片对应的label变换
+        Args:
+            x: 归一化后的x坐标（范围在[0, 1]之间）
+            y: 归一化后的y坐标（范围在[0, 1]之间）
+            w: 图像的宽度
+            h: 图像的高度
+            cos: 旋转矩阵的余弦值
+            sin: 旋转矩阵的正弦值
+            d: 缩放因子
+        '''
+        cx, cy = w / 2, h / 2  # 图像中心
+
+        # 将归一化坐标转换为绝对坐标
+        abs_x = x * w
+        abs_y = y * h
+
+        # 将点平移到图像中心
+        tx, ty = abs_x - cx, abs_y - cy
+
+        # 旋转点
+        rotated_x = tx * cos - ty * sin
+        rotated_y = tx * sin + ty * cos
+
+        # 缩放旋转后的点
+        scaled_rotated_x = rotated_x * d
+        scaled_rotated_y = rotated_y * d
+
+        # 将旋转缩放后的点平移回原位置（但仍然是绝对坐标）
+        new_abs_x = scaled_rotated_x + cx
+        new_abs_y = scaled_rotated_y + cy
+
+        # 如果需要，将绝对坐标转换回归一化坐标
+        new_x = new_abs_x / w
+        new_y = new_abs_y / h
+
+        return new_x, new_y
 
     def getBboxRotate(self, txt_file_path, angle, w, h, d):
         '''旋转图像和坐标
         '''
         bbox = []
         bboxes = self.get_bboxes(txt_file_path)
-        cx = w / 2
-        cy = h / 2
         cos = np.cos(np.deg2rad(-angle))  # 修正了角度，使其符合常规的顺时针旋转
         sin = np.sin(np.deg2rad(-angle))  # 同上
         for bbox_data in bboxes:
             class_id, x1, y1, x2, y2, x3, y3, x4, y4 = bbox_data[:]
             
             # 对每个点进行旋转和缩放变换
-            new_x1, new_y1 = self.__rotate_and_scale_point(x1, y1, cx, cy, cos, sin, d)
-            new_x2, new_y2 = self.__rotate_and_scale_point(x2, y2, cx, cy, cos, sin, d)
-            new_x3, new_y3 = self.__rotate_and_scale_point(x3, y3, cx, cy, cos, sin, d)
-            new_x4, new_y4 = self.__rotate_and_scale_point(x4, y4, cx, cy, cos, sin, d)
+            new_x1, new_y1 = self.__rotate_and_scale_point(x1, y1, w, h, cos, sin, d)
+            new_x2, new_y2 = self.__rotate_and_scale_point(x2, y2, w, h, cos, sin, d)
+            new_x3, new_y3 = self.__rotate_and_scale_point(x3, y3, w, h, cos, sin, d)
+            new_x4, new_y4 = self.__rotate_and_scale_point(x4, y4, w, h, cos, sin, d)
             
             # 构建并添加变换后的边界框字符串到bbox列表
             space_separated_string = ' '.join(map(str, [class_id, new_x1, new_y1, new_x2, new_y2, new_x3, new_y3, new_x4, new_y4]))
@@ -208,7 +251,9 @@ class aug:
             
             rotated_bgr = cv2.cvtColor(rotated, cv2.COLOR_RGB2BGR)
 
-            cv2.imwrite(self.ExportImagePath + '/' + name_only + flag + '.tif', rotated_bgr)
+            cv2.imwrite(self.ExportImagePath + '/' + name_only + flag + '.jpg', rotated_bgr)
+
+                
             labelInfo = self.getBboxRotate(self.LabelPath + '/' + name_only + '.txt', angle, width, height, new_height / height)
             self.label2txt(labelInfo, self.ExportLabelPath + '/' + name_only + flag + '.txt')
 
@@ -346,14 +391,14 @@ class aug:
 
 
 if __name__ == "__main__":
-    aug = aug(r'D:\DAS_DATASET\data\test\datasets\train\images',
-              r'D:\DAS_DATASET\data\test\datasets\train\labels',
-              r'D:\DAS_DATASET\data\test\datasets\train\images\images_ex',
-              r'D:\DAS_DATASET\data\test\datasets\train\labels\labels_ex')
+    aug = aug(r'E:\test_data\images',
+              r'E:\test_data\labels',
+              r'E:\test_data\images',
+              r'E:\test_data\labels')
     
-    # aug.Rotate()
+    aug.Rotate()
     # aug.MirrorHV()
-    aug.AddWeather()
+    # aug.AddWeather()
     # aug.RandomCrop()
     # aug.MirrorVertical()
     # aug.MirrorHorizon()
