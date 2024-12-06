@@ -251,9 +251,7 @@ class aug:
             
             rotated_bgr = cv2.cvtColor(rotated, cv2.COLOR_RGB2BGR)
 
-            cv2.imwrite(self.ExportImagePath + '/' + name_only + flag + '.jpg', rotated_bgr)
-
-                
+            cv2.imwrite(self.ExportImagePath + '/' + name_only + flag + '.tif', rotated_bgr)
             labelInfo = self.getBboxRotate(self.LabelPath + '/' + name_only + '.txt', angle, width, height, new_height / height)
             self.label2txt(labelInfo, self.ExportLabelPath + '/' + name_only + flag + '.txt')
 
@@ -385,20 +383,20 @@ class aug:
             transformed_pil = Image.fromarray(transformed['image'])
 
             # Save the transformed image as a TIF image
-            transformed_pil.save(self.ExportImagePath + '/' + name_only + flag + '.tif')
+            transformed_pil.save(self.ExportImagePath + '/' + name_only + flag + '.jpg')
 
             shutil.copy(self.LabelPath + '/' + name_only + '.txt', self.ExportLabelPath + '/' + name_only + flag + '.txt')
 
 
 if __name__ == "__main__":
-    aug = aug(r'E:\test_data\images',
-              r'E:\test_data\labels',
-              r'E:\test_data\images',
-              r'E:\test_data\labels')
+    aug = aug(r'D:\DAS_DATASET\data\test\datasets\train\images',
+              r'D:\DAS_DATASET\data\test\datasets\train\labels',
+              r'D:\DAS_DATASET\data\test\datasets\train\images\images_ex',
+              r'D:\DAS_DATASET\data\test\datasets\train\labels\labels_ex')
     
-    aug.Rotate()
+    # aug.Rotate()
     # aug.MirrorHV()
-    # aug.AddWeather()
+    aug.AddWeather()
     # aug.RandomCrop()
     # aug.MirrorVertical()
     # aug.MirrorHorizon()
