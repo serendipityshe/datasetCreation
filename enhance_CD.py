@@ -14,13 +14,15 @@ import skimage
 
 class aug:
     # 图像增强
-    def __init__(self, ImP: str, ExImP: str, labelImage: str, EXLImP: str, img2: str, out2: str) -> None:
+    def __init__(self, ImP: str, ExImP: str, labelImage: str, EXLImP: str, img2: str, out2: str, img3: str, out3: str) -> None:
         self.ImagePath = ImP
         self.ExportImagePath = ExImP
         self.LabelImagePath = labelImage
         self.ExportLABELImgPath = EXLImP
         self.img2 = img2
         self.out2 = out2
+        self.img3 = img3
+        self.out3 = out3
 
     def get_file_name(self, path):
         '''
@@ -40,6 +42,7 @@ class aug:
         image_files = self.get_file_name(self.ImagePath)
         image2_files = self.get_file_name(self.img2)
         label_files = self.get_file_name(self.LabelImagePath)
+        label2_files = self.get_file_name(self.img3)
 
         def process_images(files, input_path, output_path):
             for filename in tqdm(files):
@@ -62,6 +65,7 @@ class aug:
             process_images(label_files, self.LabelImagePath, self.ExportLABELImgPath)
             process_images(image_files, self.ImagePath, self.ExportImagePath)
             process_images(image2_files, self.img2, self.out2)
+            process_images(label2_files, self.img3, self.out3)
 
     def MirrorVertical(self, ratio = 1.0):
         '''垂直镜像
@@ -74,6 +78,7 @@ class aug:
         image_files = self.get_file_name(self.ImagePath)
         image2_files = self.get_file_name(self.img2)
         label_files = self.get_file_name(self.LabelImagePath)
+        label2_files = self.get_file_name(self.img3)
 
         def process_images(files, input_path, output_path):
             for filename in tqdm(files):
@@ -92,6 +97,7 @@ class aug:
             process_images(image_files, self.ImagePath, self.ExportImagePath)
             process_images(label_files, self.LabelImagePath, self.ExportLABELImgPath)
             process_images(image2_files, self.img2, self.out2)
+            process_images(label2_files, self.img3, self.out3)
 
 
     def MirrorHV(self, ratio = 1.0):
@@ -105,6 +111,7 @@ class aug:
         image_files = self.get_file_name(self.ImagePath)
         image2_files = self.get_file_name(self.img2)
         label_files = self.get_file_name(self.LabelImagePath)
+        label2_files = self.get_file_name(self.img3)
 
         def process_images(files, input_path, output_path):
             for filename in tqdm(files):
@@ -123,6 +130,7 @@ class aug:
             process_images(image_files, self.ImagePath, self.ExportImagePath)
             process_images(label_files, self.LabelImagePath, self.ExportLABELImgPath)
             process_images(image2_files, self.img2, self.out2)
+            process_images(label2_files, self.img3, self.out3)
 
 
 
@@ -135,6 +143,7 @@ class aug:
         image_files = self.get_file_name(self.ImagePath)
         image2_files = self.get_file_name(self.img2)
         label_files = self.get_file_name(self.LabelImagePath)
+        label2_files = self.get_file_name(self.img3)
         
         def process_images(files, input_path, output_path):
             for filename in tqdm(files):
@@ -182,14 +191,19 @@ class aug:
             transformed_pil.save(self.ExportImagePath + '/' + name_only + flag + '.png')
         process_images(label_files, self.LabelImagePath, self.ExportLABELImgPath)
         process_images(image2_files, self.img2, self.out2)
+        process_images(label2_files, self.img3, self.out3)
 
 
 
 if __name__ == "__main__":
-    aug = aug(ImP=r'E:\xunlei\EIP-CD512\B', ExImP=r'E:\xunlei\EIP-CD512\snowB\B',
-              img2=r'E:\xunlei\EIP-CD512\A', out2=r'E:\xunlei\EIP-CD512\snowB\A', 
-              labelImage=r'E:\xunlei\EIP-CD512\label', EXLImP=r'E:\xunlei\EIP-CD512\snowB\label')
+    aug = aug(ImP=r'E:\xunlei\EIP-SCD512\im1', ExImP=r'E:\xunlei\EIP-SCD512_EN\im1',
+              img2=r'E:\xunlei\EIP-SCD512\im2', out2=r'E:\xunlei\EIP-SCD512_EN\im2', 
+              labelImage=r'E:\xunlei\EIP-SCD512\label1_rgb', EXLImP=r'E:\xunlei\EIP-SCD512_EN\label1_rgb',
+              img3=r'E:\xunlei\EIP-SCD512\label2_rgb', out3=r'E:\xunlei\EIP-SCD512_EN\label2_rgb')
 
+    aug.MirrorHorizon()
+    aug.MirrorHV()
+    aug.MirrorVertical()
     aug.AddWeather()
 
 

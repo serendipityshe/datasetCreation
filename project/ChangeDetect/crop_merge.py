@@ -128,18 +128,18 @@ class imageCropMerge:
             if image_patch is None:
                 print(f"Warning: Unable to load image patch at {image_patch_path}")
                 return
-
-            if len(image_patch.shape) == 2:  # If grayscale, convert to RGB
-                image_patch = cv2.cvtColor(image_patch, cv2.COLOR_GRAY2RGB)
-
             # Calculate the position of the patch in the full image
             y_start = index // (imwidth // self.stride) * self.stride
             x_start = (index % (imwidth // self.stride)) * self.stride
 
+            # Ensure the patch size matches the expected size (fix the patch size issue)
+            y_end = min(y_start + self.patch_size[0], imhigh)
+            x_end = min(x_start + self.patch_size[1], imwidth)
+            patch_section = res[y_start:y_end, x_start:x_end]
+
             # Accumulate the image patch and weights
-            image_patch_gray = cv2.cvtColor(image_patch, cv2.COLOR_BGR2GRAY)
-            res[y_start:y_start + self.patch_size[0], x_start:x_start + self.patch_size[1]] += image_patch_gray.astype(np.float32)
-            weights[y_start:y_start + self.patch_size[0], x_start:x_start + self.patch_size[1]] += 1
+            patch_section += image_patch[:y_end-y_start, :x_end-x_start].astype(np.float32)
+            weights[y_start:y_end, x_start:x_end] += 1
 
         # Use a thread pool to process image patches in parallel
         with ThreadPoolExecutor() as executor:
@@ -166,9 +166,9 @@ class imageCropMerge:
 
 # Example usage
 if __name__ == '__main__':
-    img_crop_merge = imageCropMerge(img_path="E:/xunlei/TDOM/0802-1028/tif1.tif",
-                                    patch_size=(256, 256),
-                                    stride=160)
-    # img_crop_merge.crop_image(output_dir="/home/ljh/Desktop/test/data/image/cache/")
-    img_crop_merge.merge_patches(cache_dir="D:/PROJECT/AI-Project/ChangeDetect/open-cd/OUTPUT_TDOM_CHANGEFORMER_256s50_dsifn-nanning/vis",
-                                 output_path="E:/xunlei/TDOM/0802-1028/merged_output1.tif")
+    img_crop_merge = imageCropMerge(img_path="E:/xunlei/TDOM/0802-1028/tif2.tif",
+                                    patch_size=(512, 512),
+                                    stride=288)
+    # img_crop_merge.crop_image(output_dir=r"E:\xunlei\TDOM\0802-1028\patches_512_s190\im2")
+    img_crop_merge.merge_patches(cache_dir="D:/PROJECT/AI-Project/ChangeDetect/SCanNet/PRED_DIR/im1_rgb",
+                                 output_path="D:/PROJECT/AI-Project/ChangeDetect/SCanNet/PRED_DIR/merged_image190.tif")
