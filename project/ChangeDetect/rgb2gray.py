@@ -18,7 +18,7 @@ def color2gray(img_path, color_map):
     print(f"color2label  cost time {time_cost}")
     # 保存图片
     dir, name = os.path.split(img_path)
-    save_dir=r'E:\xunlei\EIP-SCD512_EN\label2'
+    save_dir=r'E:\xunlei\EIP-SCD512_EN\label1_1'
     if not os.path.exists(save_dir):
         os.mkdir(save_dir)
     save_path = os.path.join(save_dir, name)
@@ -29,16 +29,16 @@ if __name__ == '__main__':
     cmap = np.array(
         [
             (0, 0, 0),
-            (255,0,0), 
-            (128,128,128), 
             (0,128,0), 
+            (128,128,128), 
             (0,255,0), 
+            (255,0,0), 
             (0,0,128), 
             (0,0,255)
         ]
     )
     # 文件路径
-    img_dir = r'E:\xunlei\EIP-SCD512_EN\label2_rgb'
+    img_dir = r'E:\xunlei\EIP-SCD512_EN\label1_rgb'
     if not os.path.exists(img_dir):
         os.mkdir(img_dir)
     for img in os.listdir(img_dir):

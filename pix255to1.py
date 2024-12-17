@@ -38,8 +38,8 @@ def process_images_in_directory(input_dir, output_dir):
             convert_image_pixels(file_path, output_dir)
 
 # 指定输入和输出目录
-input_directory = r'D:\PROJECT\AI-Project\ChangeDetect\open-cd\data\SECOND\val\label3'  # 替换为您的输入目录路径
-output_directory = r'D:\PROJECT\AI-Project\ChangeDetect\open-cd\data\SECOND\val\label'  # 替换为您的输出目录路径
+input_directory = r'D:\PROJECT\AI-Project\ChangeDetect\SCanNet\datasets\SECOND\label_CD'  # 替换为您的输入目录路径
+output_directory = r'D:\PROJECT\AI-Project\ChangeDetect\SCanNet\datasets\SECOND\label_CDBI'  # 替换为您的输出目录路径
 
 # 处理输入目录下的所有图片
 process_images_in_directory(input_directory, output_directory)

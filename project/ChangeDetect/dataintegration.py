@@ -36,11 +36,11 @@ def rename_and_copy_images(images, dest_dir):
 if __name__ == "__main__":
     source_dirs = [
         r"D:\PROJECT\AI-Project\ChangeDetect\MambaCD\data\SECOND\train\GT_T2",
-        r"E:\xunlei\EIP-SCD512_EN\label2",
+        r"E:\xunlei\EIP-SCD512_EN\label2_2",
         r"D:\PROJECT\AI-Project\ChangeDetect\MambaCD\data\SECOND\test\GT_T2"
         # 可添加更多源目录路径...
     ]
-    destination_dir = r"D:\PROJECT\AI-Project\ChangeDetect\SCanNet\datasets\SECOND\ST\label2"
+    destination_dir = r"D:\PROJECT\AI-Project\ChangeDetect\SCanNet\datasets\SECOND\label2"
     
     images = collect_images(source_dirs)
     rename_and_copy_images(images, destination_dir)
