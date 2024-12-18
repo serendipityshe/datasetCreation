@@ -94,7 +94,7 @@ class imageCropMerge:
             # Save the image block as a PNG file
             cv2.imwrite(os.path.join(output_dir, f"{i}.png"), (block * 255).astype(np.uint8))
 
-    def merge_patches(self, cache_dir: str, output_path: str = None):
+    def merge_patches(self, cache_dir: str, output_path: str = None, smoothed_output_path: str = None, dilated_output_path: str = None):
         """
         Merge the cropped image patches back into a complete image.
 
@@ -153,22 +153,29 @@ class imageCropMerge:
         # Convert to uint8 type
         res = np.uint8(np.clip(res, 0, 255))
 
-        # If output path is not specified, default to the same directory as the input image
+        # Save the merged result
         if output_path is None:
             output_path = os.path.join(os.path.dirname(self.img_path), "whole_result_fused.tif")
+        cv2.imwrite(output_path, res)
+        print(f"Saved merged image to {output_path}")
 
-        # Save the result, noting that channel order is BGR for OpenCV
-        cv2.imwrite(output_path, res[:, :, ::-1])
+        # Apply erosion and dilation
+        if smoothed_output_path:
+            smoothed_res = cv2.GaussianBlur(res, (155, 155), 0)  # 使用 15x15 的高斯核进行模糊处理
+            cv2.imwrite(smoothed_output_path, smoothed_res)
+            print(f"Saved smoothed image to {smoothed_output_path}")
+
 
         # Print some statistics
-        print(f"Saved merged image to {output_path}")
         print(f"Min value in res: {np.min(res)}, Max value in res: {np.max(res)}, Mean value in res: {np.mean(res)}")
+
 
 # Example usage
 if __name__ == '__main__':
     img_crop_merge = imageCropMerge(img_path="E:/xunlei/TDOM/0802-1028/tif2.tif",
-                                    patch_size=(512, 512),
-                                    stride=288)
-    # img_crop_merge.crop_image(output_dir=r"E:\xunlei\TDOM\0802-1028\patches_512_s190\im2")
-    img_crop_merge.merge_patches(cache_dir="D:/PROJECT/AI-Project/ChangeDetect/SCanNet/PRED_DIR/im1_rgb",
-                                 output_path="D:/PROJECT/AI-Project/ChangeDetect/SCanNet/PRED_DIR/merged_image190.tif")
+                                    patch_size=(256, 256),
+                                    stride=160)
+    # img_crop_merge.crop_image(output_dir=r"E:\xunlei\TDOM\0802-1028\patches_256s50\im1")
+    img_crop_merge.merge_patches(cache_dir="D:/PROJECT/AI-Project/ChangeDetect/SCanNet/PRED_DIR_256_s50/im2_rgb",
+                                 output_path="D:/PROJECT/AI-Project/ChangeDetect/SCanNet/PRED_DIR_256_s50/merged_image190_256s50_2.tif",
+                                )

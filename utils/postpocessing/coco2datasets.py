@@ -43,7 +43,7 @@ def main(args):
  
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_dir", default="./crack_semantic_coco", type=str,
+    parser.add_argument("--input_dir", default="data/Segmentation/seatbelt", type=str,
                         help="input dataset directory")
     parser.add_argument("--split", default="train", type=str,
                         help="train2017 or val2017")
