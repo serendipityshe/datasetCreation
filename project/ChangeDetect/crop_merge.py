@@ -3,6 +3,7 @@ from skimage.io import imread
 import cv2
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 
 class imageCropMerge:
     def __init__(self, img_path: str, patch_size: tuple, stride: int):
@@ -94,14 +95,14 @@ class imageCropMerge:
             # Save the image block as a PNG file
             cv2.imwrite(os.path.join(output_dir, f"{i}.png"), (block * 255).astype(np.uint8))
 
-    def merge_patches(self, cache_dir: str, output_path: str = None, smoothed_output_path: str = None, dilated_output_path: str = None):
+    def merge_patches(self, cache_dir: str, output_path: str = None, filtered_output_path: str = None):
         """
         Merge the cropped image patches back into a complete image.
 
         Parameters:
         - cache_dir (str): Directory containing the cropped image patches.
         - output_path (str, optional): Path to save the merged image. If not specified,
-                                       it will be saved in the same directory as the input image.
+                                      it will be saved in the same directory as the input image.
         """
         # Read the original image
         image = imread(self.img_path)
@@ -141,30 +142,26 @@ class imageCropMerge:
             patch_section += image_patch[:y_end-y_start, :x_end-x_start].astype(np.float32)
             weights[y_start:y_end, x_start:x_end] += 1
 
-        # Use a thread pool to process image patches in parallel
-        with ThreadPoolExecutor() as executor:
-            futures = [executor.submit(process_patch, i) for i in range(len(os.listdir(cache_dir)))]
-            for future in as_completed(futures):
-                future.result()  # Check for exceptions
 
-        # Perform weighted average in overlapping regions
-        res = res / (weights[:, :, np.newaxis] + 1e-8)  # Add a small epsilon to prevent division by zero
+        for i in range(len(os.listdir(cache_dir))):
+            process_patch(i)
+
+        # Divide the sum by the number of weights to get the average
+        res = res / (weights[:, :, np.newaxis] + 1e-8)
 
         # Convert to uint8 type
         res = np.uint8(np.clip(res, 0, 255))
-
-        # Save the merged result
-        if output_path is None:
-            output_path = os.path.join(os.path.dirname(self.img_path), "whole_result_fused.tif")
         cv2.imwrite(output_path, res)
         print(f"Saved merged image to {output_path}")
 
-        # Apply erosion and dilation
-        if smoothed_output_path:
-            smoothed_res = cv2.GaussianBlur(res, (155, 155), 0)  # 使用 15x15 的高斯核进行模糊处理
-            cv2.imwrite(smoothed_output_path, smoothed_res)
-            print(f"Saved smoothed image to {smoothed_output_path}")
+        # # 均值滤波
+        # filtered_res = cv2.blur(res, (31,31))
 
+        # 中值滤波
+        filtered_res = cv2.medianBlur(res, 55)
+
+        cv2.imwrite(filtered_output_path, filtered_res)
+        print(f"Saved filtered image to {filtered_output_path}")
 
         # Print some statistics
         print(f"Min value in res: {np.min(res)}, Max value in res: {np.max(res)}, Mean value in res: {np.mean(res)}")
@@ -172,10 +169,11 @@ class imageCropMerge:
 
 # Example usage
 if __name__ == '__main__':
-    img_crop_merge = imageCropMerge(img_path="E:/xunlei/TDOM/0802-1028/tif2.tif",
+    img_crop_merge = imageCropMerge(img_path=r"E:\xunlei\TDOM\0802-1028\tif1.tif",
                                     patch_size=(256, 256),
                                     stride=160)
-    # img_crop_merge.crop_image(output_dir=r"E:\xunlei\TDOM\0802-1028\patches_256s50\im1")
-    img_crop_merge.merge_patches(cache_dir="D:/PROJECT/AI-Project/ChangeDetect/SCanNet/PRED_DIR_256_s50/im2_rgb",
-                                 output_path="D:/PROJECT/AI-Project/ChangeDetect/SCanNet/PRED_DIR_256_s50/merged_image190_256s50_2.tif",
+    # img_crop_merge.crop_image(output_dir=r"E:\xunlei\southEast\0925-1028\patches_2048\im2")
+    img_crop_merge.merge_patches(cache_dir=r"D:\PROJECT\AI-Project\ChangeDetect\SCanNet\PRED_DIR_256_s50\im2_rgb",
+                                 output_path="D:/PROJECT/AI-Project/ChangeDetect/SCanNet/PRED_DIR_256_s50/merged_image190_256s160_2.tif",
+                                 filtered_output_path="D:/PROJECT/AI-Project/ChangeDetect/SCanNet/PRED_DIR_256_s50/med55blur_merged_image190_256s160_2.tif"
                                 )
